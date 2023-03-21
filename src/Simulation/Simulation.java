@@ -1,147 +1,225 @@
 package Simulation;
 
 import java.util.ArrayList;
+import java.util.Collections;
 
+/*
+ * Evolutionary Biological Altruism Simulation
+ * created by Daeva
+ */
 public class Simulation {
-    // Basic Biological Altruism simulation
 
-    // Initial distribution
-    private final int initialAltruistCount;
-    private final int initialCowardCount;
-
-    // Current distribution
-    private int currentAltruistCount;
-    private int currentCowardCount;
-
-    // World properties
-    private final float enemyChance;
-
+    // world properties
+    private final float enemyMeetingChance = 0.7f;
     private ArrayList<Entity> entities;
 
-    // TODO: 21.03.23 keep data in arrays so we could plot it
+    // statistics
+    private int initialAltruistCount;
+    private int initialCowardCount;
+    private int[] altruistCountDailyData;
+    private int[] cowardCountDailyData;
 
-    public Simulation (int initialAltruistCount, int initialCowardCount) {
-        this.initialAltruistCount = initialAltruistCount;
-        this.initialCowardCount = initialCowardCount;
+    // day counters
+    private int days;
+    private int currentDay;
+    private int simulationEndDay;
 
-        this.currentAltruistCount = initialAltruistCount;
-        this.currentCowardCount = initialCowardCount;
+    // current milestones
+    // TODO: 3/22/2023 make entity variables change by next generation
+    // TODO: 3/22/2023 entities have something like perception, altruist should deduce if "opponent" is altruist or coward
+    // TODO: 3/22/2023 fully implement nutrients parameter for entities
 
-        // TODO: 06.03.23 add as arg
-        this.enemyChance = 0.65f;
-
+    private void resetData () {
+        this.currentDay = 0;
         this.entities = new ArrayList<>();
+
+        // initialise data containers
+        this.altruistCountDailyData = new int[days + 1];
+        this.cowardCountDailyData = new int[days + 1];
     }
 
-    public void simulate (int days) {
-        // Initialise entities
+    public void setData (int initialAltruistCount, int initialCowardCount, int days) {
+        this.initialAltruistCount = initialAltruistCount;
+        this.initialCowardCount = initialCowardCount;
+        this.days = days;
+
+        resetData();
+    }
+
+    public void simulate () {
+        System.out.println("\nStarting simulation for " + days + " days\n");
+
+        // initialise entities
         for (int i = 0; i < initialAltruistCount; i++) {
-            this.entities.add(new Altruist());
+            summonAltruist();
         }
 
         for (int i = 0; i < initialCowardCount; i++) {
-            this.entities.add(new Coward());
+            summonCoward();
         }
 
-        // Simulate
+        // simulate
         for (int currentDay = 1; currentDay <= days; currentDay++) {
-            // If no entities left end the simulation
-            if (entities.size() == 0) {
-                System.out.println("\nSimulation ended on day " + currentDay);
-                return;
-            }
+            // update current date
+            this.currentDay = currentDay;
 
+            final int previousDay = currentDay - 1;
+            this.altruistCountDailyData[currentDay] = this.altruistCountDailyData[previousDay];
+            this.cowardCountDailyData[currentDay] = this.cowardCountDailyData[previousDay];
+
+            // copy entities array to modify further
             final ArrayList<Entity> entitiesCopy = new ArrayList<>(entities);
-            // TODO: 21.03.23 loop over entity couples
-            for (   Entity entity : entities) {
-                // Approach to food source
-                // TODO: 06.03.23 later
 
-                // TODO: 21.03.23 random one from couple is altruist other has 1 survival rate
-                // TODO: 21.03.23 perception changes this 1,
-                //  like if perception is 0.2 if opponent is not altruist there is a 0.2 that it will not shout out
+            // shuffle entities to make couples
+            Collections.shuffle(entitiesCopy);
 
-                // Handle event
-                final float enemySpawnChance = (float) Math.random();
-                if (enemyChance > enemySpawnChance) {
-                    // Enemy spawned
-                    final float survivalRate = (float) Math.random();
-                    if (entity.getSurvivalRateWhenEnemyMet() > survivalRate) {
-                        // Survived
-                        // TODO: 06.03.23
-                    } else {
-                        // Died
-                        entitiesCopy.remove(entity);
-                        if (entity instanceof Coward) {
-                            currentCowardCount--;
-                        } else if (entity instanceof Altruist) {
-                            currentAltruistCount--;
-                        }
+            // loop over entities with couples
+            for (int i = 0; i < entitiesCopy.size() - 1; i += 2) {
+                // get a couple
+                final Entity firstEntity = entitiesCopy.get(i);
+                final Entity secondEntity = entitiesCopy.get(i + 1);
+
+                // handle event
+                if (metDanger(enemyMeetingChance)) {
+                    if (shouldNotify(firstEntity)) {
+                        // second entity survived
+
+                        // check if first survives
+                        handleDanger(firstEntity);
+
+                        // call it a day
                         continue;
                     }
-                } else {
-                    // No enemy
-                    // TODO: 06.03.23
+
+                    // first entity didn't notify
+                    // TODO: 3/21/2023 figure out whether second entity should notify if first didn't
+                    handleDanger(firstEntity);
+                    handleDanger(secondEntity);
+
+                    // call it a day
+                    continue;
                 }
 
-                // Try getting food
+                // no danger met -> get food, return to repopulate
+                firstEntity.currentNutrients++;
+                secondEntity.currentNutrients++;
 
-                // Return
-                // Repopulate
-                final int entityReproductionCount = entity.getReproductionCount();
-                for (int i = 0; i < entityReproductionCount; i++) {
-                    if (entity instanceof Coward) {
-                        entitiesCopy.add(new Coward());
-                        currentCowardCount++;
-                    } else if (entity instanceof Altruist) {
-                        entitiesCopy.add(new Altruist());
-                        currentAltruistCount++;
-                    }
-                }
+                // check reproduction
+                handleReproduction(firstEntity);
+                handleReproduction(secondEntity);
             }
-            entities = entitiesCopy;
 
+            System.out.println("Day " + currentDay + " passed");
+
+            // if no entities left end the simulation
+            if (entities.size() == 0) {
+                System.out.println("\nSimulation ended on day " + currentDay + "\n");
+                simulationEndDay = currentDay;
+                return;
+            }
+        }
+
+        simulationEndDay = days;
+
+        System.out.println("\nSimulation ended\n");
+    }
+
+    // handling events
+    public void handleReproduction (Entity entity) {
+        final int reproductionCount = getReproductionCount(entity);
+
+        if (reproductionCount <= 0) return;
+
+        final boolean isAltruist = isAltruist(entity);
+
+        for (int i = 0; i < reproductionCount; i++) {
+            if (isAltruist)
+                summonAltruist();
+            else summonCoward();
+
+        }
+        entity.currentNutrients -= entity.nutrientsNecessaryForReproduction;
+    }
+
+    public void handleDanger (Entity entity) {
+        if (survivedDanger(entity)) return;
+
+        killEntity(entity);
+    }
+
+    // creating or destroying entities
+    public void summonAltruist () {
+        // create entity
+        final Entity entity = new Entity();
+        entity.survivalRate = 0.1f;
+        entity.dangerNotifyChance = 1.0f;
+        entity.reproductionCountMin = 1;
+        entity.reproductionCountMax = 1;
+
+        // update data
+        this.altruistCountDailyData[currentDay] = this.altruistCountDailyData[currentDay] + 1;
+        this.entities.add(entity);
+    }
+
+    public void summonCoward () {
+        // create entity
+        final Entity entity = new Entity();
+        entity.survivalRate = 0.2f;
+        entity.dangerNotifyChance = 0.0f;
+        entity.reproductionCountMin = 1;
+        entity.reproductionCountMax = 1;
+
+        // update data
+        this.cowardCountDailyData[currentDay] = this.cowardCountDailyData[currentDay] + 1;
+        this.entities.add(entity);
+    }
+
+    public void killEntity (Entity entity) {
+        // remove from entities
+        this.entities.remove(entity);
+
+        // update data
+        if (isAltruist(entity))
+            this.altruistCountDailyData[currentDay] = this.altruistCountDailyData[currentDay] - 1;
+        else this.cowardCountDailyData[currentDay] = this.cowardCountDailyData[currentDay] - 1;
+    }
+
+    // checking events
+    public boolean shouldNotify (Entity entity) {
+        // TODO: 3/21/2023 somehow check if "opponent" is altruist or not and add perception parameter respectively
+        return eventHappened(entity.dangerNotifyChance);
+    }
+
+    public boolean metDanger (float dangerChance) {
+        return eventHappened(dangerChance);
+    }
+
+    public boolean survivedDanger (Entity entity) {
+        return eventHappened(entity.survivalRate);
+    }
+
+    private boolean eventHappened (float chance) {
+        final float random = (float) Math.random();
+        return random <= chance;
+    }
+
+    // entity utils
+    public int getReproductionCount (Entity entity) {
+        if (entity.nutrientsNecessaryForReproduction > entity.currentNutrients) return 0;
+        return Utils.getRandomNumberInclusive(entity.reproductionCountMin, entity.reproductionCountMax);
+    }
+
+    public boolean isAltruist (Entity entity) {
+        return entity.dangerNotifyChance == 1.0f;
+    }
+
+    // simulation utils
+    public void printData () {
+        for (int currentDay = 0; currentDay <= simulationEndDay; currentDay++) {
             System.out.println("Current day " + currentDay);
-            System.out.println("Current Altruists Count is " + currentAltruistCount);
-            System.out.println("current Cowards Count is " + currentCowardCount);
+            System.out.println("Current Altruists Count is " + this.altruistCountDailyData[currentDay]);
+            System.out.println("current Cowards Count is " + this.cowardCountDailyData[currentDay]);
             System.out.println();
         }
-    }
-
-    // TODO: 21.03.23 if make variables change by next generation
-    // TODO: 21.03.23 like if random didn't shout out
-    // TODO: 21.03.23 perception like something, like altruist should deduce if "opponent" is altruist or coward
-    public class Altruist extends Entity {
-        public float getSurvivalRateWhenShout () {
-            return 0.1f;
-        }
-
-        @Override
-        public float getSurvivalRateWhenEnemyMet() {
-            return 0.2f;
-        }
-
-        @Override
-        public int getReproductionCount() {
-            return Utils.getRandomNumberInclusive(1, 2);
-        }
-    }
-
-    public class Coward extends Entity {
-        @Override
-        public float getSurvivalRateWhenEnemyMet() {
-            return 0.2f;
-        }
-
-        @Override
-        public int getReproductionCount() {
-            return Utils.getRandomNumberInclusive(1, 2);
-        }
-    }
-
-    public abstract class Entity {
-        public abstract float getSurvivalRateWhenEnemyMet();
-        // Number of entities born on reproduction
-        public abstract int getReproductionCount();
     }
 }
