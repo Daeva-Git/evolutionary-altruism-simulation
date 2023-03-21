@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/JavaPlayground.iml" filepath="$PROJECT_DIR$/JavaPlayground.iml" />
+      <module fileurl="file://$PROJECT_DIR$/evolutionary-altruism-simulation.iml" filepath="$PROJECT_DIR$/evolutionary-altruism-simulation.iml" />
     </modules>
   </component>
 </project>
