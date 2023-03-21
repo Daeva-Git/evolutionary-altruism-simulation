@@ -73,40 +73,77 @@ public class Simulation {
             // shuffle entities to make couples
             Collections.shuffle(entitiesCopy);
 
+            // create and start threads
+            final int numThreads = (int) Math.ceil(entitiesCopy.size() / 2.0f);
+            final Thread[] threads = new Thread[numThreads];
+            final boolean enemyWithNotCoupleExists = entitiesCopy.size() % 2 != 0;
+
             // loop over entities with couples
-            for (int i = 0; i < entitiesCopy.size() - 1; i += 2) {
-                // get a couple
-                final Entity firstEntity = entitiesCopy.get(i);
-                final Entity secondEntity = entitiesCopy.get(i + 1);
+            for (int coupleIndex = 0; coupleIndex < numThreads - (enemyWithNotCoupleExists ? 1 : 0); coupleIndex++) {
+                final int firstEntityIndex = coupleIndex * 2;
+                final int secondEntityIndex = coupleIndex * 2 + 1;
 
-                // handle event
-                if (metDanger(enemyMeetingChance)) {
-                    if (shouldNotify(firstEntity)) {
-                        // second entity survived
+                int finalCoupleIndex = coupleIndex; // TODO: 3/22/2023  remove this line
+                threads[coupleIndex] = new Thread(() -> {
+                    System.out.println("thread " + finalCoupleIndex + " finished");
+                    // get a couple
+                    final Entity firstEntity = entitiesCopy.get(firstEntityIndex);
+                    final Entity secondEntity = entitiesCopy.get(secondEntityIndex);
 
-                        // check if first survives
+                    // handle event
+                    if (metDanger(enemyMeetingChance)) {
+                        if (shouldNotify(firstEntity)) {
+                            // second entity survived
+
+                            // check if first survives
+                            handleDanger(firstEntity);
+
+                            // call it a day
+                            return;
+                        }
+
+                        // first entity didn't notify
+                        // TODO: 3/21/2023 figure out whether second entity should notify if first didn't
                         handleDanger(firstEntity);
+                        handleDanger(secondEntity);
 
                         // call it a day
-                        continue;
+                        return;
                     }
 
-                    // first entity didn't notify
-                    // TODO: 3/21/2023 figure out whether second entity should notify if first didn't
-                    handleDanger(firstEntity);
-                    handleDanger(secondEntity);
+                    // no danger met -> get food, return to repopulate
+                    firstEntity.currentNutrients++;
+                    secondEntity.currentNutrients++;
 
-                    // call it a day
-                    continue;
+                    // check reproduction
+                    handleReproduction(firstEntity);
+                    handleReproduction(secondEntity);
+                });
+                threads[coupleIndex].start();
+            }
+
+            // case if there is an enemy with no couple
+            if (enemyWithNotCoupleExists) {
+                threads[numThreads - 1] = new Thread(() -> {
+                    System.out.println("thread " + (numThreads - 1) + " finished");
+                    final Entity entity = entitiesCopy.get(entitiesCopy.size() - 1);
+
+                    if (metDanger(enemyMeetingChance)) {
+                        handleDanger(entity);
+                    } else {
+                        handleReproduction(entity);
+                    }
+                });
+                threads[numThreads - 1].start();
+            }
+
+            // wait for threads to finish
+            for (Thread thread : threads) {
+                try {
+                    thread.join();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }
-
-                // no danger met -> get food, return to repopulate
-                firstEntity.currentNutrients++;
-                secondEntity.currentNutrients++;
-
-                // check reproduction
-                handleReproduction(firstEntity);
-                handleReproduction(secondEntity);
             }
 
             System.out.println("Day " + currentDay + " passed");
