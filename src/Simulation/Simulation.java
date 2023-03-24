@@ -1,7 +1,14 @@
 package Simulation;
 
+import com.sun.source.tree.SynchronizedTree;
+import jdk.jshell.execution.Util;
+
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
 
 /*
  * Evolutionary Biological Altruism Simulation
@@ -46,6 +53,11 @@ public class Simulation {
         resetData();
     }
 
+    public void simulate (long seed) {
+//        Utils.random.get().setSeed(seed);
+        simulate();
+    }
+
     public void simulate () {
         System.out.println("\nStarting simulation for " + days + " days\n");
 
@@ -59,6 +71,8 @@ public class Simulation {
         }
 
         // simulate
+        long startTime = System.currentTimeMillis();
+
         for (int currentDay = 1; currentDay <= days; currentDay++) {
             // update current date
             this.currentDay = currentDay;
@@ -71,57 +85,96 @@ public class Simulation {
             final ArrayList<Entity> entitiesCopy = new ArrayList<>(entities);
 
             // shuffle entities to make couples
-            Collections.shuffle(entitiesCopy);
+            Collections.shuffle(entitiesCopy, Utils.random.get());
+
+            // create and start threads
+            final int couples = (int) Math.ceil(entitiesCopy.size() / 2.0f);
+            final int leftEnemyCount = entitiesCopy.size() % 2;
+            final ExecutorService executorService = Executors.newFixedThreadPool(couples + leftEnemyCount);
+
+            System.out.println("couples " + (couples + leftEnemyCount));
 
             // loop over entities with couples
-            for (int i = 0; i < entitiesCopy.size() - 1; i += 2) {
-                // get a couple
-                final Entity firstEntity = entitiesCopy.get(i);
-                final Entity secondEntity = entitiesCopy.get(i + 1);
+            for (int coupleIndex = 0; coupleIndex < couples - leftEnemyCount; coupleIndex++) {
+                final int firstEntityIndex = coupleIndex * 2;
+                final int secondEntityIndex = coupleIndex * 2 + 1;
 
-                // handle event
-                if (metDanger(enemyMeetingChance)) {
-                    if (shouldNotify(firstEntity)) {
-                        // second entity survived
+                executorService.execute(() -> {
+                    // get a couple
+                    final Entity firstEntity = entitiesCopy.get(firstEntityIndex);
+                    final Entity secondEntity = entitiesCopy.get(secondEntityIndex);
 
-                        // check if first survives
+                    // handle event
+                    if (metDanger(enemyMeetingChance)) {
+                        if (shouldNotify(firstEntity)) {
+                            // second entity survived
+
+                            // check if first survives
+                            handleDanger(firstEntity);
+
+                            // call it a day
+                            return;
+                        }
+
+                        // first entity didn't notify
+                        // TODO: 3/21/2023 figure out whether second entity should notify if first didn't
                         handleDanger(firstEntity);
+                        handleDanger(secondEntity);
 
                         // call it a day
-                        continue;
+                        return;
                     }
 
-                    // first entity didn't notify
-                    // TODO: 3/21/2023 figure out whether second entity should notify if first didn't
-                    handleDanger(firstEntity);
-                    handleDanger(secondEntity);
+                    // no danger met -> get food
+                    firstEntity.currentNutrients++;
+                    secondEntity.currentNutrients++;
 
-                    // call it a day
-                    continue;
-                }
-
-                // no danger met -> get food, return to repopulate
-                firstEntity.currentNutrients++;
-                secondEntity.currentNutrients++;
-
-                // check reproduction
-                handleReproduction(firstEntity);
-                handleReproduction(secondEntity);
+                    // try to reproduce
+                    handleReproduction(firstEntity);
+                    handleReproduction(secondEntity);
+                    System.out.print(" | ");
+                });
             }
 
+            // case if there is an enemy with no couple
+            if (leftEnemyCount > 0) {
+                executorService.submit(() -> {
+                    final Entity entity = entitiesCopy.get(entitiesCopy.size() - 1);
+
+                    if (metDanger(enemyMeetingChance)) {
+                        handleDanger(entity);
+                    } else {
+                        handleReproduction(entity);
+                    }
+                    System.out.print(" | ");
+                });
+            }
+
+            executorService.shutdown();
+
+//            this.entities.sort(Utils.entityComparator);
+
+            System.out.println();
             System.out.println("Day " + currentDay + " passed");
 
             // if no entities left end the simulation
             if (entities.size() == 0) {
-                System.out.println("\nSimulation ended on day " + currentDay + "\n");
-                simulationEndDay = currentDay;
+                endSimulation(startTime, days);
                 return;
             }
         }
 
-        simulationEndDay = days;
+        endSimulation(startTime, days);
+    }
 
-        System.out.println("\nSimulation ended\n");
+    public void endSimulation (long startTime, int simulationEndDay) {
+        final long endTime = System.currentTimeMillis();
+        this.simulationEndDay = simulationEndDay;
+
+        System.out.println();
+        System.out.println("Simulation ended on day " + currentDay );
+        System.out.println("Elapsed time is " + (endTime - startTime) + " mills");
+        System.out.println();
     }
 
     // handling events
@@ -199,7 +252,7 @@ public class Simulation {
     }
 
     private boolean eventHappened (float chance) {
-        final float random = (float) Math.random();
+        final float random = Utils.random.get().nextFloat();
         return random <= chance;
     }
 
