@@ -2,6 +2,7 @@ package Simulation;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Timer;
 
 /*
  * Evolutionary Biological Altruism Simulation
@@ -59,6 +60,8 @@ public class Simulation {
         }
 
         // simulate
+        final long startTime = System.currentTimeMillis();
+
         for (int currentDay = 1; currentDay <= days; currentDay++) {
             // update current date
             this.currentDay = currentDay;
@@ -71,7 +74,7 @@ public class Simulation {
             final ArrayList<Entity> entitiesCopy = new ArrayList<>(entities);
 
             // shuffle entities to make couples
-            Collections.shuffle(entitiesCopy);
+            Collections.shuffle(entitiesCopy, Utils.random);
 
             // loop over entities with couples
             for (int i = 0; i < entitiesCopy.size() - 1; i += 2) {
@@ -113,15 +116,22 @@ public class Simulation {
 
             // if no entities left end the simulation
             if (entities.size() == 0) {
-                System.out.println("\nSimulation ended on day " + currentDay + "\n");
-                simulationEndDay = currentDay;
+                endSimulation(startTime, days);
                 return;
             }
         }
 
-        simulationEndDay = days;
+        endSimulation(startTime, days);
+    }
 
-        System.out.println("\nSimulation ended\n");
+    public void endSimulation (long startTime, int simulationEndDay) {
+        final long endTime = System.currentTimeMillis();
+        this.simulationEndDay = simulationEndDay;
+
+        System.out.println();
+        System.out.println("Simulation ended on day " + currentDay );
+        System.out.println("Elapsed time is " + (endTime - startTime) + " mills");
+        System.out.println();
     }
 
     // handling events
@@ -199,7 +209,7 @@ public class Simulation {
     }
 
     private boolean eventHappened (float chance) {
-        final float random = (float) Math.random();
+        final float random = Utils.random.nextFloat();
         return random <= chance;
     }
 
