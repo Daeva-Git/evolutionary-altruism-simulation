@@ -2,8 +2,6 @@ package Simulation;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Timer;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /*
  * Evolutionary Biological Altruism Simulation
@@ -17,10 +15,10 @@ public class Simulation {
 
     // statistics
     private int initialAltruistCount;
-    private int initialCowardCount;
-    private int[] altruistCountDailyData;
-    private int[] cowardCountDailyData;
-    private float[] dayCompleteDuration;
+    private int initialEgoistCount;
+    public int[] altruistCountDailyData;
+    public int[] egoistCountDailyData;
+    public float[] dayCompleteDuration;
 
     // day counters
     private int days;
@@ -29,7 +27,7 @@ public class Simulation {
 
     // current milestones
     // TODO: 3/22/2023 make entity variables change by next generation
-    // TODO: 3/22/2023 entities have something like perception, altruist should deduce if "opponent" is altruist or coward
+    // TODO: 3/22/2023 entities have something like perception, altruist should deduce if "opponent" is altruist or egoist
     // TODO: 3/22/2023 fully implement nutrients parameter for entities
 
     private void resetData () {
@@ -38,13 +36,13 @@ public class Simulation {
 
         // initialise data containers
         this.altruistCountDailyData = new int[days + 1];
-        this.cowardCountDailyData = new int[days + 1];
+        this.egoistCountDailyData = new int[days + 1];
         this.dayCompleteDuration = new float[days + 1];
     }
 
-    public void setData (int initialAltruistCount, int initialCowardCount, int days) {
+    public void setData (int initialAltruistCount, int initialegoistCount, int days) {
         this.initialAltruistCount = initialAltruistCount;
-        this.initialCowardCount = initialCowardCount;
+        this.initialEgoistCount = initialegoistCount;
         this.days = days;
 
         resetData();
@@ -58,8 +56,8 @@ public class Simulation {
             summonAltruist();
         }
 
-        for (int i = 0; i < initialCowardCount; i++) {
-            summonCoward();
+        for (int i = 0; i < initialEgoistCount; i++) {
+            summonegoist();
         }
 
         // simulate
@@ -73,7 +71,7 @@ public class Simulation {
 
             final int previousDay = currentDay - 1;
             this.altruistCountDailyData[currentDay] = this.altruistCountDailyData[previousDay];
-            this.cowardCountDailyData[currentDay] = this.cowardCountDailyData[previousDay];
+            this.egoistCountDailyData[currentDay] = this.egoistCountDailyData[previousDay];
 
             // copy entities array to modify further
             final ArrayList<Entity> entitiesCopy = new ArrayList<>(entities);
@@ -95,7 +93,7 @@ public class Simulation {
                         // check if first survives
                         handleDanger(firstEntity);
                     } else {
-                        // coward behavior (first entity runs and saves his life, second one dies)
+                        // egoist behavior (first entity runs and saves his life, second one dies)
                         killEntity(secondEntity);
                     }
 
@@ -115,6 +113,9 @@ public class Simulation {
             final long dayEndTime = System.currentTimeMillis();
             final float dayLastDuration = (dayEndTime - dayStartTime) / 1000.0f;
             this.dayCompleteDuration[currentDay] = dayLastDuration;
+
+            // print current day data to keep track of the simulation
+            printDay(currentDay);
 
             // if no entities left end the simulation
             if (entities.size() == 0) {
@@ -147,7 +148,7 @@ public class Simulation {
         for (int i = 0; i < reproductionCount; i++) {
             if (isAltruist)
                 summonAltruist();
-            else summonCoward();
+            else summonegoist();
 
         }
         entity.currentNutrients -= entity.nutrientsNecessaryForReproduction;
@@ -173,7 +174,7 @@ public class Simulation {
         this.entities.add(entity);
     }
 
-    public void summonCoward () {
+    public void summonegoist () {
         // create entity
         final Entity entity = new Entity();
         entity.survivalRate = 1.0f;
@@ -182,7 +183,7 @@ public class Simulation {
         entity.reproductionCountMax = 2;
 
         // update data
-        this.cowardCountDailyData[currentDay] = this.cowardCountDailyData[currentDay] + 1;
+        this.egoistCountDailyData[currentDay] = this.egoistCountDailyData[currentDay] + 1;
         this.entities.add(entity);
     }
 
@@ -193,7 +194,7 @@ public class Simulation {
         // update data
         if (isAltruist(entity))
             this.altruistCountDailyData[currentDay] = this.altruistCountDailyData[currentDay] - 1;
-        else this.cowardCountDailyData[currentDay] = this.cowardCountDailyData[currentDay] - 1;
+        else this.egoistCountDailyData[currentDay] = this.egoistCountDailyData[currentDay] - 1;
     }
 
     // checking events
@@ -228,25 +229,29 @@ public class Simulation {
     // simulation utils
     public void printData () {
         for (int currentDay = 0; currentDay <= simulationEndDay; currentDay++) {
-            final int altruistCountDailyDatum = this.altruistCountDailyData[currentDay];
-            final int cowardCountDailyDatum = this.cowardCountDailyData[currentDay];
-            final int totalEntities = cowardCountDailyDatum + altruistCountDailyDatum;
-            final float cowardsPercent = Math.round(cowardCountDailyDatum * 1.0f / totalEntities * 100.0f);
-            final float altruistsPercent = 100 - cowardsPercent;
-            final float currentDayCompleteDuration = dayCompleteDuration[currentDay];
-
-            System.out.printf(" %-20s%12s\t\t %s%13s%n",
-                    "\u001B[47;30;1m Current day:", currentDay,
-                    "duration secs:", currentDayCompleteDuration + " \u001B[0m");
-
-            print("\u001B[36m", "altruists:", altruistCountDailyDatum);
-            System.out.print("\t\t");
-            println("\u001B[31;2m", "cowards:", cowardCountDailyDatum);
-
-            print("\u001B[36m", "altruists:", "% " + altruistsPercent);
-            System.out.print("\t\t");
-            println("\u001B[31;2m", "cowards:", "% " + cowardsPercent);
+            printDay(currentDay);
         }
+    }
+
+    private void printDay (int day) {
+        final int altruistCountDailyDatum = this.altruistCountDailyData[day];
+        final int egoistCountDailyDatum = this.egoistCountDailyData[day];
+        final int totalEntities = egoistCountDailyDatum + altruistCountDailyDatum;
+        final float egoistsPercent = Math.round(egoistCountDailyDatum * 1.0f / totalEntities * 100.0f);
+        final float altruistsPercent = 100 - egoistsPercent;
+        final float currentDayCompleteDuration = dayCompleteDuration[day];
+
+        System.out.printf(" %-20s%12s\t\t %s%13s%n",
+                "\u001B[47;30;1m Current day:", day,
+                "duration secs:", currentDayCompleteDuration + " \u001B[0m");
+
+        print("\u001B[36m", "altruists:", altruistCountDailyDatum);
+        System.out.print("\t\t");
+        println("\u001B[31;2m", "egoists:", egoistCountDailyDatum);
+
+        print("\u001B[36m", "altruists:", "% " + altruistsPercent);
+        System.out.print("\t\t");
+        println("\u001B[31;2m", "egoists:", "% " + egoistsPercent);
     }
 
     private static void print (String color, Object param, Object arg) {

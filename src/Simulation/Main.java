@@ -5,8 +5,12 @@ public class Main {
         Utils.random.setSeed(1000);
 
         final Simulation simulation = new Simulation();
-        simulation.setData(20, 20, 50);
+        simulation.setData(20, 20, 100);
         simulation.simulate();
-        simulation.printData();
+//        simulation.printData();
+
+        final float[] dayCompleteDuration = simulation.dayCompleteDuration;
+        final int[] altruistCountDailyData = simulation.altruistCountDailyData;
+        final int[] egoistCountDailyData = simulation.egoistCountDailyData;
     }
 }
