@@ -3,6 +3,7 @@ package Simulation;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Timer;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /*
  * Evolutionary Biological Altruism Simulation
@@ -19,6 +20,7 @@ public class Simulation {
     private int initialCowardCount;
     private int[] altruistCountDailyData;
     private int[] cowardCountDailyData;
+    private float[] dayCompleteDuration;
 
     // day counters
     private int days;
@@ -37,6 +39,7 @@ public class Simulation {
         // initialise data containers
         this.altruistCountDailyData = new int[days + 1];
         this.cowardCountDailyData = new int[days + 1];
+        this.dayCompleteDuration = new float[days + 1];
     }
 
     public void setData (int initialAltruistCount, int initialCowardCount, int days) {
@@ -63,6 +66,8 @@ public class Simulation {
         final long startTime = System.currentTimeMillis();
 
         for (int currentDay = 1; currentDay <= days; currentDay++) {
+            final long dayStartTime = System.currentTimeMillis();
+
             // update current date
             this.currentDay = currentDay;
 
@@ -85,34 +90,31 @@ public class Simulation {
                 // handle event
                 if (metDanger(enemyMeetingChance)) {
                     if (shouldNotify(firstEntity)) {
-                        // second entity survived
+                        // altruistic behavior (first entity yells endangers his life, second one runs)
 
                         // check if first survives
                         handleDanger(firstEntity);
-
-                        // call it a day
-                        continue;
+                    } else {
+                        // coward behavior (first entity runs and saves his life, second one dies)
+                        killEntity(secondEntity);
                     }
 
-                    // first entity didn't notify
-                    // TODO: 3/21/2023 figure out whether second entity should notify if first didn't
-                    handleDanger(firstEntity);
-                    handleDanger(secondEntity);
+                } else {
+                    // no danger met -> get food, return to repopulate
+                    firstEntity.currentNutrients++;
+                    secondEntity.currentNutrients++;
 
-                    // call it a day
-                    continue;
+                    // check reproduction
+                    handleReproduction(firstEntity);
+                    handleReproduction(secondEntity);
                 }
 
-                // no danger met -> get food, return to repopulate
-                firstEntity.currentNutrients++;
-                secondEntity.currentNutrients++;
-
-                // check reproduction
-                handleReproduction(firstEntity);
-                handleReproduction(secondEntity);
             }
 
-            System.out.println("Day " + currentDay + " passed");
+            // calculate day complete duration
+            final long dayEndTime = System.currentTimeMillis();
+            final float dayLastDuration = (dayEndTime - dayStartTime) / 1000.0f;
+            this.dayCompleteDuration[currentDay] = dayLastDuration;
 
             // if no entities left end the simulation
             if (entities.size() == 0) {
@@ -130,7 +132,7 @@ public class Simulation {
 
         System.out.println();
         System.out.println("Simulation ended on day " + currentDay );
-        System.out.println("Elapsed time is " + (endTime - startTime) + " mills");
+        System.out.println("Elapsed time is " + ((endTime - startTime) / 1000) + " seconds");
         System.out.println();
     }
 
@@ -161,10 +163,10 @@ public class Simulation {
     public void summonAltruist () {
         // create entity
         final Entity entity = new Entity();
-        entity.survivalRate = 0.1f;
+        entity.survivalRate = 0.9f;
         entity.dangerNotifyChance = 1.0f;
         entity.reproductionCountMin = 1;
-        entity.reproductionCountMax = 1;
+        entity.reproductionCountMax = 2;
 
         // update data
         this.altruistCountDailyData[currentDay] = this.altruistCountDailyData[currentDay] + 1;
@@ -174,10 +176,10 @@ public class Simulation {
     public void summonCoward () {
         // create entity
         final Entity entity = new Entity();
-        entity.survivalRate = 0.2f;
+        entity.survivalRate = 1.0f;
         entity.dangerNotifyChance = 0.0f;
         entity.reproductionCountMin = 1;
-        entity.reproductionCountMax = 1;
+        entity.reproductionCountMax = 2;
 
         // update data
         this.cowardCountDailyData[currentDay] = this.cowardCountDailyData[currentDay] + 1;
@@ -226,10 +228,33 @@ public class Simulation {
     // simulation utils
     public void printData () {
         for (int currentDay = 0; currentDay <= simulationEndDay; currentDay++) {
-            System.out.println("Current day " + currentDay);
-            System.out.println("Current Altruists Count is " + this.altruistCountDailyData[currentDay]);
-            System.out.println("current Cowards Count is " + this.cowardCountDailyData[currentDay]);
-            System.out.println();
+            final int altruistCountDailyDatum = this.altruistCountDailyData[currentDay];
+            final int cowardCountDailyDatum = this.cowardCountDailyData[currentDay];
+            final int totalEntities = cowardCountDailyDatum + altruistCountDailyDatum;
+            final float cowardsPercent = Math.round(cowardCountDailyDatum * 1.0f / totalEntities * 100.0f);
+            final float altruistsPercent = 100 - cowardsPercent;
+            final float currentDayCompleteDuration = dayCompleteDuration[currentDay];
+
+            System.out.printf(" %-20s%12s\t\t %s%13s%n",
+                    "\u001B[47;30;1m Current day:", currentDay,
+                    "duration secs:", currentDayCompleteDuration + " \u001B[0m");
+
+            print("\u001B[36m", "altruists:", altruistCountDailyDatum);
+            System.out.print("\t\t");
+            println("\u001B[31;2m", "cowards:", cowardCountDailyDatum);
+
+            print("\u001B[36m", "altruists:", "% " + altruistsPercent);
+            System.out.print("\t\t");
+            println("\u001B[31;2m", "cowards:", "% " + cowardsPercent);
         }
+    }
+
+    private static void print (String color, Object param, Object arg) {
+        System.out.printf("%-25s%10s", color + " " + param + "\u001B[0m", arg);
+    }
+
+    private static void println (String color, Object param, Object arg) {
+        print(color, param, arg);
+        System.out.println();
     }
 }
