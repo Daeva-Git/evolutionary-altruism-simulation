@@ -1,7 +1,8 @@
 package Simulation;
 
-import java.util.ArrayList;
-import java.util.Collections;
+import Simulation.utils.EntityArray;
+import Simulation.utils.pool.EntityPool;
+import Simulation.utils.Utils;
 
 /*
  * Evolutionary Biological Altruism Simulation
@@ -11,7 +12,8 @@ public class Simulation {
 
     // world properties
     private final float enemyMeetingChance = 0.7f;
-    private ArrayList<Entity> entities;
+    private EntityArray entities;
+    private final EntityPool entityPool = new EntityPool();
 
     // statistics
     private int initialAltruistCount;
@@ -32,7 +34,7 @@ public class Simulation {
 
     private void resetData () {
         this.currentDay = 0;
-        this.entities = new ArrayList<>();
+        this.entities = new EntityArray();
 
         // initialise data containers
         this.altruistCountDailyData = new int[days + 1];
@@ -40,15 +42,15 @@ public class Simulation {
         this.dayCompleteDuration = new float[days + 1];
     }
 
-    public void setData (int initialAltruistCount, int initialegoistCount, int days) {
+    public void setData (int initialAltruistCount, int initialEgoistCount, int days) {
         this.initialAltruistCount = initialAltruistCount;
-        this.initialEgoistCount = initialegoistCount;
+        this.initialEgoistCount = initialEgoistCount;
         this.days = days;
 
         resetData();
     }
 
-    public void simulate () {
+    public void simulate (boolean printSpentTime) {
         System.out.println("\nStarting simulation for " + days + " days\n");
 
         // initialise entities
@@ -57,8 +59,11 @@ public class Simulation {
         }
 
         for (int i = 0; i < initialEgoistCount; i++) {
-            summonegoist();
+            summonEgoist();
         }
+
+        // print first day data
+        printDay(currentDay);
 
         // simulate
         final long startTime = System.currentTimeMillis();
@@ -73,41 +78,86 @@ public class Simulation {
             this.altruistCountDailyData[currentDay] = this.altruistCountDailyData[previousDay];
             this.egoistCountDailyData[currentDay] = this.egoistCountDailyData[previousDay];
 
-            // copy entities array to modify further
-            final ArrayList<Entity> entitiesCopy = new ArrayList<>(entities);
+            // optimization stats
+            long reproductionTime = 0;
+            long killingEntityTime = 0;
+            long gettingEntitiesTime = 0;
+            long checkingDangerMetTime = 0;
+            long checkingNotifyTime = 0;
+            long start;
 
             // shuffle entities to make couples
-            Collections.shuffle(entitiesCopy, Utils.random);
+            entities.shuffle(Utils.random);
+
+            long total = System.nanoTime();
 
             // loop over entities with couples
-            for (int i = 0; i < entitiesCopy.size() - 1; i += 2) {
-                // get a couple
-                final Entity firstEntity = entitiesCopy.get(i);
-                final Entity secondEntity = entitiesCopy.get(i + 1);
+            for (int entityIndex = entities.size() - 1; entityIndex > 2; entityIndex -= 2) {
+                // get a couple of entities
+                start = System.nanoTime();
+                final int coupleIndex = entityIndex - 1;
+                final Entity entity = entities.get(entityIndex);
+                final Entity couple = entities.get(coupleIndex);
+                gettingEntitiesTime += System.nanoTime() - start;
 
                 // handle event
+                start = System.nanoTime();
                 if (metDanger(enemyMeetingChance)) {
-                    if (shouldNotify(firstEntity)) {
+                    checkingDangerMetTime += System.nanoTime() - start;
+                    start = System.nanoTime();
+                    if (shouldNotify(entity)) {
+                        checkingNotifyTime += System.nanoTime() - start;
                         // altruistic behavior (first entity yells endangers his life, second one runs)
 
                         // check if first survives
-                        handleDanger(firstEntity);
+                        // TODO: 29.03.23 later use this method
+                        // handleDanger(entity, entityIndex);
+                        if (!survivedDanger(entity)) {
+                            start = System.nanoTime();
+                            killEntity(entity, entityIndex);
+                            killingEntityTime += System.nanoTime() - start;
+                        }
                     } else {
                         // egoist behavior (first entity runs and saves his life, second one dies)
-                        killEntity(secondEntity);
+                        start = System.nanoTime();
+                        killEntity(couple, coupleIndex);
+                        killingEntityTime += System.nanoTime() - start;
                     }
-
                 } else {
                     // no danger met -> get food, return to repopulate
-                    firstEntity.currentNutrients++;
-                    secondEntity.currentNutrients++;
+                    entity.currentNutrients++;
+                    couple.currentNutrients++;
 
                     // check reproduction
-                    handleReproduction(firstEntity);
-                    handleReproduction(secondEntity);
+                    start = System.nanoTime();
+                    handleReproduction(entity);
+                    handleReproduction(couple);
+                    reproductionTime += System.nanoTime() - start;
                 }
-
             }
+
+            // last entity without couple case
+            final boolean enemyWithoutCoupleLeft = entities.size() % 2 == 1;
+            if (enemyWithoutCoupleLeft) {
+                start = System.nanoTime();
+                final int leftEntityIndex = 0;
+                final Entity leftEntity = entities.get(leftEntityIndex);
+                gettingEntitiesTime += System.nanoTime() - start;
+                if (metDanger(enemyMeetingChance)) {
+                    // TODO: 29.03.23 later use this method
+                    // handleDanger(entity, leftEntityIndex);
+                    if (!survivedDanger(leftEntity)) {
+                        start = System.nanoTime();
+                        killEntity(leftEntity, leftEntityIndex);
+                        killingEntityTime += System.nanoTime() - start;
+                    }
+                } else {
+                    start = System.nanoTime();
+                    handleReproduction(leftEntity);
+                    reproductionTime += System.nanoTime() - start;
+                }
+            }
+            start = System.nanoTime();
 
             // calculate day complete duration
             final long dayEndTime = System.currentTimeMillis();
@@ -116,6 +166,17 @@ public class Simulation {
 
             // print current day data to keep track of the simulation
             printDay(currentDay);
+
+            if (printSpentTime) {
+                System.out.println("time spent on print            for day " + currentDay + ": " + (System.nanoTime() - start));
+                System.out.println("time spent on reproduction     for day " + currentDay + ": " + reproductionTime);
+                System.out.println("time spent on getting entities for day " + currentDay + ": " + gettingEntitiesTime);
+                System.out.println("time spent on killing entities for day " + currentDay + ": " + killingEntityTime);
+                System.out.println("time spent on danger met check for day " + currentDay + ": " + checkingDangerMetTime);
+                System.out.println("time spent on notify check     for day " + currentDay + ": " + checkingNotifyTime);
+                System.out.println("time spent on total            for day " + currentDay + ": " + (System.nanoTime() - total));
+                System.out.println("time spent on sum              for day " + currentDay + ": " + (reproductionTime + gettingEntitiesTime + killingEntityTime + checkingDangerMetTime + checkingNotifyTime));
+            }
 
             // if no entities left end the simulation
             if (entities.size() == 0) {
@@ -148,22 +209,22 @@ public class Simulation {
         for (int i = 0; i < reproductionCount; i++) {
             if (isAltruist)
                 summonAltruist();
-            else summonegoist();
+            else summonEgoist();
 
         }
         entity.currentNutrients -= entity.nutrientsNecessaryForReproduction;
     }
 
-    public void handleDanger (Entity entity) {
+    public void handleDanger (Entity entity, int entityIndex) {
         if (survivedDanger(entity)) return;
 
-        killEntity(entity);
+        killEntity(entity, entityIndex);
     }
 
     // creating or destroying entities
     public void summonAltruist () {
         // create entity
-        final Entity entity = new Entity();
+        final Entity entity = entityPool.obtain();
         entity.survivalRate = 0.9f;
         entity.dangerNotifyChance = 1.0f;
         entity.reproductionCountMin = 1;
@@ -174,9 +235,9 @@ public class Simulation {
         this.entities.add(entity);
     }
 
-    public void summonegoist () {
+    public void summonEgoist() {
         // create entity
-        final Entity entity = new Entity();
+        final Entity entity = entityPool.obtain();
         entity.survivalRate = 1.0f;
         entity.dangerNotifyChance = 0.0f;
         entity.reproductionCountMin = 1;
@@ -187,9 +248,10 @@ public class Simulation {
         this.entities.add(entity);
     }
 
-    public void killEntity (Entity entity) {
+    public void killEntity (Entity entity, int entityIndex) {
         // remove from entities
-        this.entities.remove(entity);
+        this.entities.remove(entityIndex);
+        this.entityPool.free(entity);
 
         // update data
         if (isAltruist(entity))
@@ -200,20 +262,15 @@ public class Simulation {
     // checking events
     public boolean shouldNotify (Entity entity) {
         // TODO: 3/21/2023 somehow check if "opponent" is altruist or not and add perception parameter respectively
-        return eventHappened(entity.dangerNotifyChance);
+        return Utils.eventOccurred(entity.dangerNotifyChance);
     }
 
     public boolean metDanger (float dangerChance) {
-        return eventHappened(dangerChance);
+        return Utils.eventOccurred(dangerChance);
     }
 
     public boolean survivedDanger (Entity entity) {
-        return eventHappened(entity.survivalRate);
-    }
-
-    private boolean eventHappened (float chance) {
-        final float random = Utils.random.nextFloat();
-        return random <= chance;
+        return Utils.eventOccurred(entity.survivalRate);
     }
 
     // entity utils
