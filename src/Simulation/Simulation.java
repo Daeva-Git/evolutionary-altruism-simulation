@@ -51,7 +51,7 @@ public class Simulation {
     }
 
     public void simulate (boolean printSpentTime) {
-        System.out.println("\nStarting simulation for " + days + " days\n");
+        System.out.println("\nStarting simulation for " + days + " days (Seed " + Utils.getSeed() + ")\n");
 
         // initialise entities
         for (int i = 0; i < initialAltruistCount; i++) {
