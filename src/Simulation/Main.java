@@ -4,16 +4,25 @@ import Simulation.utils.Utils;
 
 public class Main {
     public static void main(String[] args) {
-//        Utils.random.setSeed(1000);
-        Utils.random.setSeed(Utils.random.nextInt());
-
         final Simulation simulation = new Simulation();
-        simulation.setData(20, 20, 75);
-        simulation.simulate(false);
-//        simulation.printData();
+        long startTime = System.currentTimeMillis();
+        int iterations = 10;
 
-        final float[] dayCompleteDuration = simulation.dayCompleteDuration;
-        final int[] altruistCountDailyData = simulation.altruistCountDailyData;
-        final int[] egoistCountDailyData = simulation.egoistCountDailyData;
+        final int[][] altruistCountDailyData = new int[iterations][];
+        final int[][] egoistCountDailyData = new int[iterations][];
+
+        for (int i = 0; i < iterations; i++) {
+            Utils.random.setSeed(Utils.random.nextInt());
+
+            simulation.setData(20, 20, 60);
+            simulation.printSpentTime = false;
+            simulation.printDailyData = false;
+            simulation.simulate();
+
+            altruistCountDailyData[i] = simulation.altruistCountDailyData.clone();
+            egoistCountDailyData[i] = simulation.egoistCountDailyData.clone();
+        }
+
+        System.out.println("Time taken for " + iterations + " iterations: " + (System.currentTimeMillis() - startTime) / 1000 + "(secs)");
     }
 }

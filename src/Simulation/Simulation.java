@@ -27,6 +27,10 @@ public class Simulation {
     private int currentDay;
     private int simulationEndDay;
 
+    // flags
+    public boolean printSpentTime;
+    public boolean printDailyData;
+
     // current milestones
     // TODO: 3/22/2023 make entity variables change by next generation
     // TODO: 3/22/2023 entities have something like perception, altruist should deduce if "opponent" is altruist or egoist
@@ -50,7 +54,7 @@ public class Simulation {
         resetData();
     }
 
-    public void simulate (boolean printSpentTime) {
+    public void simulate () {
         System.out.println("\nStarting simulation for " + days + " days (Seed " + Utils.getSeed() + ")\n");
 
         // initialise entities
@@ -63,7 +67,9 @@ public class Simulation {
         }
 
         // print first day data
-        printDay(currentDay);
+        if (printDailyData) {
+            printDay(currentDay);
+        }
 
         // simulate
         final long startTime = System.currentTimeMillis();
@@ -175,7 +181,9 @@ public class Simulation {
             this.dayCompleteDuration[currentDay] = dayLastDuration;
 
             // print current day data to keep track of the simulation
-            printDay(currentDay);
+            if (printDailyData) {
+                printDay(currentDay);
+            }
 
             // if no entities left end the simulation
             if (entities.size() == 0) {
