@@ -6,10 +6,18 @@ import java.util.*;
 
 public class EntityArray {
     private Entity[] entities;
+
+    // indices
     private final ArrayDeque<Integer> removedIndices;
     private int latestIndex;
+
+    // capacity
     private static final int DEFAULT_CAPACITY = 16;
     private int currentCapacity;
+
+    // scheduling operations
+    final ArrayDeque<Entity> entitiesToAdd = new ArrayDeque<>();
+    final ArrayDeque<Integer> entitiesToRemove = new ArrayDeque<>();
 
     public EntityArray() {
         this(DEFAULT_CAPACITY);
@@ -20,24 +28,6 @@ public class EntityArray {
 
         entities = new Entity[currentCapacity];
         removedIndices = new ArrayDeque<>();
-    }
-
-    public void add (Entity entity) {
-        if (removedIndices.isEmpty()) {
-            entities[latestIndex] = entity;
-            latestIndex++;
-            if (latestIndex == currentCapacity) {
-                grow();
-            }
-        } else {
-            final Integer pop = removedIndices.pop();
-            entities[pop] = entity;
-        }
-    }
-
-    public void remove (int index) {
-        removedIndices.add(index);
-        entities[index] = null;
     }
 
     public Entity set (int index, Entity entity) {
@@ -82,8 +72,11 @@ public class EntityArray {
         }
     }
 
-    public void swap (int i, int j) {
-        set(i - 1, set(j, get(i - 1)));
+    public void swap (int first, int second) {
+        final Entity firstEntity = get(first);
+        final Entity secondEntity = get(second);
+        set(second, firstEntity);
+        set(first, secondEntity);
     }
 
     private Object[] grow() {
@@ -93,5 +86,53 @@ public class EntityArray {
 
     private Object[] grow (int newCapacity) {
         return entities = Arrays.copyOf(entities, newCapacity);
+    }
+
+    public void add (Entity entity) {
+        if (removedIndices.isEmpty()) {
+            entities[latestIndex] = entity;
+            latestIndex++;
+            if (latestIndex == currentCapacity) {
+                grow();
+            }
+        } else {
+            final Integer pop = removedIndices.pop();
+            entities[pop] = entity;
+        }
+    }
+
+    public void remove (int index) {
+        removedIndices.add(index);
+        entities[index] = null;
+    }
+
+    public void add (Entity entity, boolean schedule) {
+        if (schedule) scheduleAddition(entity);
+        else add(entity);
+    }
+
+    public void remove (int index, boolean schedule) {
+        if (schedule) scheduleRemoval(index);
+        else remove(index);
+    }
+
+    private void scheduleAddition (Entity entity) {
+        entitiesToAdd.add(entity);
+    }
+
+    private void scheduleRemoval (int index) {
+        entitiesToRemove.add(index);
+    }
+
+    public void addScheduled () {
+        while (!entitiesToAdd.isEmpty()) {
+            add(entitiesToAdd.pop());
+        }
+    }
+
+    public void removeScheduled () {
+        while (!entitiesToRemove.isEmpty()) {
+            remove(entitiesToRemove.pop());
+        }
     }
 }
