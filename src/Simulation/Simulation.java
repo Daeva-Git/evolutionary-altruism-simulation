@@ -55,11 +55,11 @@ public class Simulation {
 
         // initialise entities
         for (int i = 0; i < initialAltruistCount; i++) {
-            summonAltruist();
+            summonAltruist(false);
         }
 
         for (int i = 0; i < initialEgoistCount; i++) {
-            summonEgoist();
+            summonEgoist(false);
         }
 
         // print first day data
@@ -92,10 +92,10 @@ public class Simulation {
             long total = System.nanoTime();
 
             // loop over entities with couples
-            for (int entityIndex = entities.size() - 1; entityIndex > 2; entityIndex -= 2) {
+            for (int entityIndex = 0; entityIndex < entities.size() - 1; entityIndex += 2) {
                 // get a couple of entities
                 start = System.nanoTime();
-                final int coupleIndex = entityIndex - 1;
+                final int coupleIndex = entityIndex + 1;
                 final Entity entity = entities.get(entityIndex);
                 final Entity couple = entities.get(coupleIndex);
                 gettingEntitiesTime += System.nanoTime() - start;
@@ -110,13 +110,9 @@ public class Simulation {
                         // altruistic behavior (first entity yells endangers his life, second one runs)
 
                         // check if first survives
-                        // TODO: 29.03.23 later use this method
-                        // handleDanger(entity, entityIndex);
-                        if (!survivedDanger(entity)) {
-                            start = System.nanoTime();
-                            killEntity(entity, entityIndex);
-                            killingEntityTime += System.nanoTime() - start;
-                        }
+                        start = System.nanoTime();
+                        handleDanger(entity, entityIndex);
+                        killingEntityTime += System.nanoTime() - start;
                     } else {
                         // egoist behavior (first entity runs and saves his life, second one dies)
                         start = System.nanoTime();
@@ -140,35 +136,30 @@ public class Simulation {
             final boolean enemyWithoutCoupleLeft = entities.size() % 2 == 1;
             if (enemyWithoutCoupleLeft) {
                 start = System.nanoTime();
-                final int leftEntityIndex = 0;
+                final int leftEntityIndex = entities.size() - 1;
                 final Entity leftEntity = entities.get(leftEntityIndex);
                 gettingEntitiesTime += System.nanoTime() - start;
+
                 if (metDanger(enemyMeetingChance)) {
-                    // TODO: 29.03.23 later use this method
-                    // handleDanger(entity, leftEntityIndex);
-                    if (!survivedDanger(leftEntity)) {
-                        start = System.nanoTime();
-                        killEntity(leftEntity, leftEntityIndex);
-                        killingEntityTime += System.nanoTime() - start;
-                    }
+                    start = System.nanoTime();
+                    handleDanger(leftEntity, leftEntityIndex);
+                    killingEntityTime += System.nanoTime() - start;
                 } else {
                     start = System.nanoTime();
                     handleReproduction(leftEntity);
                     reproductionTime += System.nanoTime() - start;
                 }
             }
+
             start = System.nanoTime();
+            entities.removeScheduled();
+            killingEntityTime += System.nanoTime() - start;
 
-            // calculate day complete duration
-            final long dayEndTime = System.currentTimeMillis();
-            final float dayLastDuration = (dayEndTime - dayStartTime) / 1000.0f;
-            this.dayCompleteDuration[currentDay] = dayLastDuration;
-
-            // print current day data to keep track of the simulation
-            printDay(currentDay);
+            start = System.nanoTime();
+            entities.addScheduled();
+            reproductionTime += System.nanoTime() - start;
 
             if (printSpentTime) {
-                System.out.println("time spent on print            for day " + currentDay + ": " + (System.nanoTime() - start));
                 System.out.println("time spent on reproduction     for day " + currentDay + ": " + reproductionTime);
                 System.out.println("time spent on getting entities for day " + currentDay + ": " + gettingEntitiesTime);
                 System.out.println("time spent on killing entities for day " + currentDay + ": " + killingEntityTime);
@@ -177,6 +168,14 @@ public class Simulation {
                 System.out.println("time spent on total            for day " + currentDay + ": " + (System.nanoTime() - total));
                 System.out.println("time spent on sum              for day " + currentDay + ": " + (reproductionTime + gettingEntitiesTime + killingEntityTime + checkingDangerMetTime + checkingNotifyTime));
             }
+
+            // calculate day complete duration
+            final long dayEndTime = System.currentTimeMillis();
+            final float dayLastDuration = (dayEndTime - dayStartTime) / 1000.0f;
+            this.dayCompleteDuration[currentDay] = dayLastDuration;
+
+            // print current day data to keep track of the simulation
+            printDay(currentDay);
 
             // if no entities left end the simulation
             if (entities.size() == 0) {
@@ -208,8 +207,8 @@ public class Simulation {
 
         for (int i = 0; i < reproductionCount; i++) {
             if (isAltruist)
-                summonAltruist();
-            else summonEgoist();
+                summonAltruist(true);
+            else summonEgoist(true);
 
         }
         entity.currentNutrients -= entity.nutrientsNecessaryForReproduction;
@@ -222,7 +221,7 @@ public class Simulation {
     }
 
     // creating or destroying entities
-    public void summonAltruist () {
+    public void summonAltruist (boolean schedule) {
         // create entity
         final Entity entity = entityPool.obtain();
         entity.survivalRate = 0.9f;
@@ -232,10 +231,10 @@ public class Simulation {
 
         // update data
         this.altruistCountDailyData[currentDay] = this.altruistCountDailyData[currentDay] + 1;
-        this.entities.add(entity);
+        this.entities.add(entity, schedule);
     }
 
-    public void summonEgoist() {
+    public void summonEgoist(boolean schedule) {
         // create entity
         final Entity entity = entityPool.obtain();
         entity.survivalRate = 1.0f;
@@ -245,12 +244,12 @@ public class Simulation {
 
         // update data
         this.egoistCountDailyData[currentDay] = this.egoistCountDailyData[currentDay] + 1;
-        this.entities.add(entity);
+        this.entities.add(entity, schedule);
     }
 
     public void killEntity (Entity entity, int entityIndex) {
         // remove from entities
-        this.entities.remove(entityIndex);
+        this.entities.remove(entityIndex, true);
         this.entityPool.free(entity);
 
         // update data

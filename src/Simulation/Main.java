@@ -8,7 +8,7 @@ public class Main {
         Utils.random.setSeed(Utils.random.nextInt());
 
         final Simulation simulation = new Simulation();
-        simulation.setData(20, 20, 100);
+        simulation.setData(20, 20, 75);
         simulation.simulate(false);
 //        simulation.printData();
 
