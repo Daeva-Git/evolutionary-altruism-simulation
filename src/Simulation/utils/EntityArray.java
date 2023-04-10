@@ -42,16 +42,22 @@ public class EntityArray {
             throw new ArrayIndexOutOfBoundsException("Index " + index + " out of bounds for length " + size());
         }
 
-        int trueIndex = getRemovedCount(index) + index;
-        while (removedIndices.contains(trueIndex)) {
-            trueIndex++;
+        return entities[getTrueIndex(index)];
+    }
+
+    public int getTrueIndex (int index) {
+        int skipNotNullCount = getRemovedCount(index);
+        while (skipNotNullCount != 0 || entities[index] == null) {
+            if (entities[index] != null)
+                skipNotNullCount--;
+            index++;
         }
-        return entities[trueIndex];
+        return index;
     }
 
     public int getRemovedCount (int tillIndex) {
         int count = 0;
-        for (Integer removedIndex : removedIndices) {
+        for (int removedIndex : removedIndices) {
             if (removedIndex < tillIndex) count++;
         }
         return count;
@@ -67,16 +73,18 @@ public class EntityArray {
 
     public void shuffle(Random rnd) {
         int size = size();
-        for (int i = size; i > 1; i--){
+        for (int i = size; i > 1; i--) {
             swap(i - 1, rnd.nextInt(i));
         }
     }
 
     public void swap (int first, int second) {
-        final Entity firstEntity = get(first);
-        final Entity secondEntity = get(second);
-        set(second, firstEntity);
-        set(first, secondEntity);
+        final int firstEntityIndex = getTrueIndex(first);
+        final int secondEntityIndex = getTrueIndex(second);
+        final Entity firstEntity = entities[firstEntityIndex];
+        final Entity secondEntity = entities[secondEntityIndex];
+        set(firstEntityIndex, secondEntity);
+        set(secondEntityIndex, firstEntity);
     }
 
     private Object[] grow() {
@@ -101,9 +109,11 @@ public class EntityArray {
         }
     }
 
+    // removes nth element from the array
     public void remove (int index) {
-        removedIndices.add(index);
-        entities[index] = null;
+        int trueIndex = getTrueIndex(index);
+        removedIndices.add(trueIndex);
+        entities[trueIndex] = null;
     }
 
     public void add (Entity entity, boolean schedule) {
@@ -130,9 +140,19 @@ public class EntityArray {
         }
     }
 
+    private final ArrayDeque<Integer> removedEntitiesTrueIndices = new ArrayDeque<>();
     public void removeScheduled () {
+        // set true indices to null
         while (!entitiesToRemove.isEmpty()) {
-            remove(entitiesToRemove.pop());
+            final int index = entitiesToRemove.pop();
+            removedEntitiesTrueIndices.add(getTrueIndex(index));
+        }
+
+        // add removed indices later to not interrupt group removal
+        while (!removedEntitiesTrueIndices.isEmpty()) {
+            final Integer removedTrueIndex = removedEntitiesTrueIndices.pop();
+            entities[removedTrueIndex] = null;
+            removedIndices.add(removedTrueIndex);
         }
     }
 }
