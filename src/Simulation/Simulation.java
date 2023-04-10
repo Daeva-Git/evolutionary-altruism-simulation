@@ -55,7 +55,7 @@ public class Simulation {
     }
 
     public void simulate () {
-        System.out.println("\nStarting simulation for " + days + " days (Seed " + Utils.getSeed() + ")\n");
+        System.out.println("Starting simulation for " + days + " days (Seed " + Utils.getSeed() + ")");
 
         // initialise entities
         for (int i = 0; i < initialAltruistCount; i++) {
@@ -199,10 +199,8 @@ public class Simulation {
         final long endTime = System.currentTimeMillis();
         this.simulationEndDay = simulationEndDay;
 
-        System.out.println();
         System.out.println("Simulation ended on day " + currentDay );
         System.out.println("Elapsed time is " + ((endTime - startTime) / 1000) + " seconds");
-        System.out.println();
     }
 
     // handling events
@@ -232,7 +230,7 @@ public class Simulation {
     public void summonAltruist (boolean schedule) {
         // create entity
         final Entity entity = entityPool.obtain();
-        entity.survivalRate = 0.9f;
+        entity.survivalRate = 0.6f;
         entity.dangerNotifyChance = 1.0f;
         entity.reproductionCountMin = 1;
         entity.reproductionCountMax = 2;
@@ -245,7 +243,7 @@ public class Simulation {
     public void summonEgoist(boolean schedule) {
         // create entity
         final Entity entity = entityPool.obtain();
-        entity.survivalRate = 1.0f;
+        entity.survivalRate = 0.0f;
         entity.dangerNotifyChance = 0.0f;
         entity.reproductionCountMin = 1;
         entity.reproductionCountMax = 2;
@@ -261,9 +259,11 @@ public class Simulation {
         this.entityPool.free(entity);
 
         // update data
-        if (isAltruist(entity))
+        if (isAltruist(entity)) {
             this.altruistCountDailyData[currentDay] = this.altruistCountDailyData[currentDay] - 1;
-        else this.egoistCountDailyData[currentDay] = this.egoistCountDailyData[currentDay] - 1;
+        } else {
+            this.egoistCountDailyData[currentDay] = this.egoistCountDailyData[currentDay] - 1;
+        }
     }
 
     // checking events
