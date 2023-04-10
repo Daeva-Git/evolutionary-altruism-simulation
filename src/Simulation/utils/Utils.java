@@ -28,6 +28,10 @@ public class Utils {
         return random <= chance;
     }
 
+    public static float floor (float number, int n) {
+        return (float) (Math.floor(number * Math.pow(10, n)) / Math.pow(10, n));
+    }
+
     // testing utils
     public static void test (String taskName, int iterations, Runnable task) {
         final long start = System.nanoTime();
