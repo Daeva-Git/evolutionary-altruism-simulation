@@ -23,12 +23,13 @@ public class Utils {
         return getRandomNumber(min, max + 1);
     }
 
-    public static boolean eventOccurred (float chance) {
+    public static boolean checkChance (float chance) {
         final float random = Utils.random.nextFloat();
         return random <= chance;
     }
 
     public static float floor (float number, int n) {
+        if (number == 0) return 0;
         return (float) (Math.floor(number * Math.pow(10, n)) / Math.pow(10, n));
     }
 

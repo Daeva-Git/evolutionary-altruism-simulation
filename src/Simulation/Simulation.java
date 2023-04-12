@@ -14,6 +14,8 @@ public class Simulation {
     private final float enemyMeetingChance = 0.7f;
     private EntityArray entities;
     private final EntityPool entityPool = new EntityPool();
+    private final float perceptionIncreaseCount = 0.04f;
+    private final float perceptionDecreaseCount = 0.05f;
 
     // statistics
     private int initialAltruistCount;
@@ -59,7 +61,7 @@ public class Simulation {
 
         // initialise entities
         for (int i = 0; i < initialAltruistCount; i++) {
-            summonAltruist(false);
+            summonAltruist(false, null);
         }
 
         for (int i = 0; i < initialEgoistCount; i++) {
@@ -101,9 +103,9 @@ public class Simulation {
             for (int entityIndex = 0; entityIndex < entities.size() - 1; entityIndex += 2) {
                 // get a couple of entities
                 start = System.nanoTime();
-                final int coupleIndex = entityIndex + 1;
+                final int opponentIndex = entityIndex + 1;
                 final Entity entity = entities.get(entityIndex);
-                final Entity couple = entities.get(coupleIndex);
+                final Entity opponent = entities.get(opponentIndex);
                 gettingEntitiesTime += System.nanoTime() - start;
 
                 // handle event
@@ -111,29 +113,52 @@ public class Simulation {
                 if (metDanger(enemyMeetingChance)) {
                     checkingDangerMetTime += System.nanoTime() - start;
                     start = System.nanoTime();
-                    if (shouldNotify(entity)) {
+                    if (shouldNotify(entity, opponent)) {
                         checkingNotifyTime += System.nanoTime() - start;
                         // altruistic behavior (first entity yells endangers his life, second one runs)
+                        if (isAltruist(opponent)) {
+                            // if opponent is altruist decrease perception
+                            entity.perception -= perceptionDecreaseCount;
+                        }
 
                         // check if first survives
                         start = System.nanoTime();
-                        handleDanger(entity, entityIndex);
-                        killingEntityTime += System.nanoTime() - start;
+                        final boolean survived = survivedDanger(entity);
+                        if (survived) {
+                            // if entity survived and the opponent was egoist increase perception
+                            if (!isAltruist(opponent)) {
+                                // TODO: 11.04.23 note perception can get higher 1
+                                entity.perception += perceptionIncreaseCount;
+                            }
+                        } else {
+                            killEntity(entity, entityIndex);
+                        }
                     } else {
                         // egoist behavior (first entity runs and saves his life, second one dies)
                         start = System.nanoTime();
-                        killEntity(couple, coupleIndex);
-                        killingEntityTime += System.nanoTime() - start;
+                        killEntity(opponent, opponentIndex);
                     }
+                    killingEntityTime += System.nanoTime() - start;
                 } else {
                     // no danger met -> get food, return to repopulate
                     entity.currentNutrients++;
-                    couple.currentNutrients++;
+                    opponent.currentNutrients++;
 
                     // check reproduction
                     start = System.nanoTime();
                     handleReproduction(entity);
-                    handleReproduction(couple);
+                    handleReproduction(opponent);
+
+                    // TODO: 11.04.23 note perception can get lower 0
+                    if (isAltruist(entity)) {
+                        // if entity is altruist decrease perception
+                        entity.perception -= perceptionDecreaseCount;
+                    }
+                    if (isAltruist(opponent)) {
+                        // if opponent is altruist decrease perception
+                        opponent.perception -= perceptionDecreaseCount;
+                    }
+
                     reproductionTime += System.nanoTime() - start;
                 }
             }
@@ -147,9 +172,11 @@ public class Simulation {
                 gettingEntitiesTime += System.nanoTime() - start;
 
                 if (metDanger(enemyMeetingChance)) {
-                    start = System.nanoTime();
-                    handleDanger(leftEntity, leftEntityIndex);
-                    killingEntityTime += System.nanoTime() - start;
+                    if (!survivedDanger(leftEntity)) {
+                        start = System.nanoTime();
+                        killEntity(leftEntity, leftEntityIndex);
+                        killingEntityTime += System.nanoTime() - start;
+                    }
                 } else {
                     start = System.nanoTime();
                     handleReproduction(leftEntity);
@@ -212,28 +239,25 @@ public class Simulation {
         final boolean isAltruist = isAltruist(entity);
 
         for (int i = 0; i < reproductionCount; i++) {
-            if (isAltruist)
-                summonAltruist(true);
-            else summonEgoist(true);
-
+            if (isAltruist) {
+                summonAltruist(true, entity);
+            } else {
+                summonEgoist(true);
+            }
         }
         entity.currentNutrients -= entity.nutrientsNecessaryForReproduction;
     }
 
-    public void handleDanger (Entity entity, int entityIndex) {
-        if (survivedDanger(entity)) return;
-
-        killEntity(entity, entityIndex);
-    }
-
     // creating or destroying entities
-    public void summonAltruist (boolean schedule) {
+    public void summonAltruist (boolean schedule, Entity parent) {
         // create entity
         final Entity entity = entityPool.obtain();
         entity.survivalRate = 0.6f;
         entity.dangerNotifyChance = 1.0f;
         entity.reproductionCountMin = 1;
         entity.reproductionCountMax = 2;
+        // keep parent perception if exist
+        entity.perception = parent == null ? 0.0f : parent.perception;
 
         // update data
         this.altruistCountDailyData[currentDay] = this.altruistCountDailyData[currentDay] + 1;
@@ -247,6 +271,7 @@ public class Simulation {
         entity.dangerNotifyChance = 0.0f;
         entity.reproductionCountMin = 1;
         entity.reproductionCountMax = 2;
+        entity.perception = 1.0f;
 
         // update data
         this.egoistCountDailyData[currentDay] = this.egoistCountDailyData[currentDay] + 1;
@@ -267,17 +292,29 @@ public class Simulation {
     }
 
     // checking events
-    public boolean shouldNotify (Entity entity) {
-        // TODO: 3/21/2023 somehow check if "opponent" is altruist or not and add perception parameter respectively
-        return Utils.eventOccurred(entity.dangerNotifyChance);
+    public boolean shouldNotify (Entity entity, Entity opponent) {
+        if (isAltruist(entity)) {
+            // if entity is altruist try to figure out opponent
+            if (figureOut(entity)) {
+                // if entity could figure out, if opponent is altruist notify, else do not
+                return isAltruist(opponent);
+            }
+        }
+
+        // if entity was not altruist do not notify
+        return false;
+    }
+
+    public boolean figureOut (Entity entity) {
+        return Utils.checkChance(entity.perception);
     }
 
     public boolean metDanger (float dangerChance) {
-        return Utils.eventOccurred(dangerChance);
+        return Utils.checkChance(dangerChance);
     }
 
     public boolean survivedDanger (Entity entity) {
-        return Utils.eventOccurred(entity.survivalRate);
+        return Utils.checkChance(entity.survivalRate);
     }
 
     // entity utils

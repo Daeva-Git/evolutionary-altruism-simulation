@@ -39,13 +39,13 @@ public class Test {
         for (int i = entities.size() - 1; i > 2 ; i -= 2) {
             final int entityOne = i;
             final int entityTwo = i + 1;
-            if (Utils.eventOccurred(0.5f)) {
+            if (Utils.checkChance(0.5f)) {
                 entities.remove(entityOne);
             } else {
                 entities.add(new Entity());
             }
 
-            if (Utils.eventOccurred(0.5f)) {
+            if (Utils.checkChance(0.5f)) {
                 entities.remove(entityTwo);
             } else {
                 entities.add(new Entity());

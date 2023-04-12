@@ -5,6 +5,7 @@ public class Entity {
     public float survivalRate;
 
     // petition to notify danger when enemy met
+    // TODO: 11.04.23 later change into boolean (altruist or no)
     public float dangerNotifyChance;
 
     // number of entities born on reproduction
@@ -13,4 +14,6 @@ public class Entity {
 
     public int nutrientsNecessaryForReproduction;
     public int currentNutrients;
+
+    public float perception;
 }

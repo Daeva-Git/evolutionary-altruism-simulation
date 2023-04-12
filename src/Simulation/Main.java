@@ -11,7 +11,7 @@ public class Main {
     public static void main(String[] args) throws IOException {
         final Simulation simulation = new Simulation();
         long startTime = System.currentTimeMillis();
-        int iterations = 20;
+        int iterations = 50;
         int days = 100;
 
 //        Utils.random.setSeed(60526795);
@@ -39,7 +39,7 @@ public class Main {
 
             System.out.println("Iteration: " + i);
 
-            simulation.setData(20, 20, days);
+            simulation.setData(10, 30, days);
             simulation.printSpentTime = false;
             simulation.printDailyData = false;
             simulation.simulate();
