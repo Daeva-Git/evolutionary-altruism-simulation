@@ -12,14 +12,12 @@ public class SimulationData {
 
     // egoists
     public float egoistSurvivalRate = 0.0f;
-    public float egoistDangerNotifyChance = 0.0f;
     public int egoistReproductionCountMin = 1;
     public int egoistReproductionCountMax = 2;
     public float egoistPerception = 1.0f;
 
     // altruist
     public float altruistSurvivalRate = 0.8f;
-    public float altruistDangerNotifyChance = 1.0f;
     public int altruistReproductionCountMin = 1;
     public int altruistReproductionCountMax = 2;
     public float altruistPerception = 0.0f;
