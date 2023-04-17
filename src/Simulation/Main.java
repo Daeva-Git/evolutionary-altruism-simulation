@@ -8,22 +8,12 @@ import java.io.IOException;
 import java.util.Arrays;
 
 public class Main {
-    public static void main(String[] args) throws IOException {
+    public static void main (String[] args) throws IOException {
         final Simulation simulation = new Simulation();
-        long startTime = System.currentTimeMillis();
-        int iterations = 50;
-        int days = 100;
+        final SimulationData data = new SimulationData();
 
-//        Utils.random.setSeed(60526795);
-//        simulation.setData(20, 20, days);
-//        simulation.printSpentTime = true;
-//        simulation.printDailyData = true;
-//        simulation.simulate();
-
-        // TODO: 03.04.23 10 iterations 50 days
-        // TODO: 03.04.23 average percentages
-        // TODO: 03.04.23 if 50 not good do more
-        // TODO: 03.04.23 take video variables
+        final long startTime = System.currentTimeMillis();
+        final int iterations = 10;
 
         final int[][] altruistCountDailyData = new int[iterations][];
         final int[][] egoistCountDailyData = new int[iterations][];
@@ -39,9 +29,9 @@ public class Main {
 
             System.out.println("Iteration: " + i);
 
-            simulation.setData(10, 30, days);
+            simulation.setData(data);
             simulation.printSpentTime = false;
-            simulation.printDailyData = false;
+            simulation.printDailyData = true;
             simulation.simulate();
 
             altruistCountDailyData[i] = simulation.altruistCountDailyData.clone();
@@ -63,13 +53,19 @@ public class Main {
         // write average ratio
         final FileWriter averageWriter = new FileWriter(file, true);
         averageWriter.write("\nAverage Ratio\n");
-        final float[] averageRatio = new float[days];
-        for (int day = 0; day < days; day++) {
+        final float[] averageRatio = new float[data.days];
+        for (int day = 0; day < data.days; day++) {
             for (int i = 0; i < iterations; i++) {
                 final int altruistsCount = altruistCountDailyData[i][day];
                 final int egoistCount = egoistCountDailyData[i][day];
                 final int entityCount = altruistsCount + egoistCount;
-                final float altruistPercent = altruistsCount * 1.0f / entityCount;
+                final float altruistPercent;
+                // if no entity exists percentage is 0.5
+                if (entityCount == 0) {
+                    altruistPercent = 0.5f;
+                } else {
+                    altruistPercent = altruistsCount * 1.0f / entityCount;
+                }
                 averageRatio[day] += altruistPercent;
             }
             averageRatio[day] /= iterations;

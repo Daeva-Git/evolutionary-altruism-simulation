@@ -35,6 +35,12 @@ public class EntityArray {
         return entity;
     }
 
+    // returns entity at given index
+    public Entity getEntityAt (int index) {
+        return entities[index];
+    }
+
+    // returns nth entity
     public Entity get (int index) {
         if (index < 0 || index > size()) {
             final long seed = Utils.getSeed();
@@ -67,11 +73,16 @@ public class EntityArray {
         return latestIndex - removedIndices.size();
     }
 
+    public int getLastIndex () {
+        return this.latestIndex;
+    }
+
     public boolean isEmpty() {
         return size() == 0;
     }
 
     public void shuffle(Random rnd) {
+        // TODO: 13.04.23 change shuffle
         int size = size();
         for (int i = size; i > 1; i--) {
             swap(i - 1, rnd.nextInt(i));
@@ -111,9 +122,8 @@ public class EntityArray {
 
     // removes nth element from the array
     public void remove (int index) {
-        int trueIndex = getTrueIndex(index);
-        removedIndices.add(trueIndex);
-        entities[trueIndex] = null;
+        removedIndices.add(index);
+        entities[index] = null;
     }
 
     public void add (Entity entity, boolean schedule) {
@@ -140,19 +150,9 @@ public class EntityArray {
         }
     }
 
-    private final ArrayDeque<Integer> removedEntitiesTrueIndices = new ArrayDeque<>();
     public void removeScheduled () {
-        // set true indices to null
         while (!entitiesToRemove.isEmpty()) {
-            final int index = entitiesToRemove.pop();
-            removedEntitiesTrueIndices.add(getTrueIndex(index));
-        }
-
-        // add removed indices later to not interrupt group removal
-        while (!removedEntitiesTrueIndices.isEmpty()) {
-            final Integer removedTrueIndex = removedEntitiesTrueIndices.pop();
-            entities[removedTrueIndex] = null;
-            removedIndices.add(removedTrueIndex);
+            remove(entitiesToRemove.pop());
         }
     }
 }
