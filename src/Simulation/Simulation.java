@@ -29,8 +29,6 @@ public class Simulation {
     public boolean printDailyData;
 
     // current milestones
-    // TODO: 3/22/2023 make entity variables change by next generation
-    // TODO: 3/22/2023 entities have something like perception, altruist should deduce if "opponent" is altruist or egoist
     // TODO: 3/22/2023 fully implement nutrients parameter for entities
 
     private void reset () {
