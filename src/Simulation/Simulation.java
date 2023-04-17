@@ -171,7 +171,7 @@ public class Simulation {
             if (shouldNotify(firstEntity, secondEntity)) {
                 // altruistic behavior (first entity yells endangers his life, second one runs)
                 if (data.usePerception) {
-                    if (isAltruist(secondEntity)) {
+                    if (secondEntity.isAltruist) {
                         // if opponent is altruist decrease perception
                         firstEntity.perception -= data.perceptionDecreaseCount;
                     }
@@ -182,7 +182,7 @@ public class Simulation {
                 if (survived) {
                     if (data.usePerception) {
                         // if entity survived and the opponent was egoist increase perception
-                        if (!isAltruist(secondEntity)) {
+                        if (!secondEntity.isAltruist) {
                             // TODO: 11.04.23 note perception can get higher 1
                             firstEntity.perception += data.perceptionIncreaseCount;
                         }
@@ -205,11 +205,11 @@ public class Simulation {
 
             if (data.usePerception) {
                 // TODO: 11.04.23 note perception can get lower than 0
-                if (isAltruist(firstEntity)) {
+                if (firstEntity.isAltruist) {
                     // if entity is altruist decrease perception
                     firstEntity.perception -= data.perceptionDecreaseCount;
                 }
-                if (isAltruist(secondEntity)) {
+                if (secondEntity.isAltruist) {
                     // if opponent is altruist decrease perception
                     secondEntity.perception -= data.perceptionDecreaseCount;
                 }
@@ -231,10 +231,8 @@ public class Simulation {
 
         if (reproductionCount <= 0) return;
 
-        final boolean isAltruist = isAltruist(entity);
-
         for (int i = 0; i < reproductionCount; i++) {
-            if (isAltruist) {
+            if (entity.isAltruist) {
                 summonAltruist(true, entity);
             } else {
                 summonEgoist(true);
@@ -247,8 +245,8 @@ public class Simulation {
     public void summonAltruist (boolean schedule, Entity parent) {
         // create entity
         final Entity entity = entityPool.obtain();
+        entity.isAltruist = true;
         entity.survivalRate = data.altruistSurvivalRate;
-        entity.dangerNotifyChance = data.altruistDangerNotifyChance;
         entity.reproductionCountMin = data.altruistReproductionCountMin;
         entity.reproductionCountMax = data.altruistReproductionCountMax;
         // keep parent perception if exist
@@ -266,8 +264,8 @@ public class Simulation {
     public void summonEgoist (boolean schedule) {
         // create entity
         final Entity entity = entityPool.obtain();
+        entity.isAltruist = false;
         entity.survivalRate = data.egoistSurvivalRate;
-        entity.dangerNotifyChance = data.egoistDangerNotifyChance;
         entity.reproductionCountMin = data.egoistReproductionCountMin;
         entity.reproductionCountMax = data.egoistReproductionCountMax;
         entity.perception = data.egoistPerception;
@@ -283,7 +281,7 @@ public class Simulation {
         this.entityPool.free(entity);
 
         // update data
-        if (isAltruist(entity)) {
+        if (entity.isAltruist) {
             this.altruistCountDailyData[currentDay] = this.altruistCountDailyData[currentDay] - 1;
         } else {
             this.egoistCountDailyData[currentDay] = this.egoistCountDailyData[currentDay] - 1;
@@ -292,12 +290,12 @@ public class Simulation {
 
     // checking events
     public boolean shouldNotify (Entity entity, Entity opponent) {
-        if (isAltruist(entity)) {
+        if (entity.isAltruist) {
             if (data.usePerception) {
                 // if entity is altruist try to figure out the opponent
                 if (figureOut(entity)) {
                     // if entity could figure out, notify if opponent is altruist, else do not
-                    return isAltruist(opponent);
+                    return opponent.isAltruist;
                 }
             }
             return true;
@@ -323,10 +321,6 @@ public class Simulation {
     public int getReproductionCount (Entity entity) {
         if (entity.nutrientsNecessaryForReproduction > entity.currentNutrients) return 0;
         return Utils.getRandomNumberInclusive(entity.reproductionCountMin, entity.reproductionCountMax);
-    }
-
-    public boolean isAltruist (Entity entity) {
-        return entity.dangerNotifyChance == 1.0f;
     }
 
     // simulation utils
