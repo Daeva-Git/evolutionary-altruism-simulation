@@ -82,20 +82,28 @@ public class EntityArray {
     }
 
     public void shuffle(Random rnd) {
-        // TODO: 13.04.23 change shuffle
         int size = size();
         for (int i = size; i > 1; i--) {
-            swap(i - 1, rnd.nextInt(i));
+            // find first
+            while (entities[i - 1] == null) i--;
+
+            // find second
+            int second = rnd.nextInt(i);
+            while (entities[second] == null) second--;
+
+            // swap
+            swap(i - 1, second);
         }
     }
 
     public void swap (int first, int second) {
-        final int firstEntityIndex = getTrueIndex(first);
-        final int secondEntityIndex = getTrueIndex(second);
-        final Entity firstEntity = entities[firstEntityIndex];
-        final Entity secondEntity = entities[secondEntityIndex];
-        set(firstEntityIndex, secondEntity);
-        set(secondEntityIndex, firstEntity);
+        final Entity firstEntity = entities[first];
+        final Entity secondEntity = entities[second];
+
+        if (firstEntity == null || secondEntity == null) return;
+
+        set(first, secondEntity);
+        set(second, firstEntity);
     }
 
     private Object[] grow() {
