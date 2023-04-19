@@ -79,29 +79,16 @@ public class Simulation {
             this.altruistCountDailyData[currentDay] = this.altruistCountDailyData[previousDay];
             this.egoistCountDailyData[currentDay] = this.egoistCountDailyData[previousDay];
 
-            // optimization stats
-            long reproductionTime = 0;
-            long killingEntityTime = 0;
-            long gettingEntitiesTime = 0;
-            long checkingDangerMetTime = 0;
-            long checkingNotifyTime = 0;
-
             // shuffle entities to make couples
             entities.shuffle(Utils.random);
 
-            long total = System.nanoTime();
-
             // loop over entities with couples
             final int entitiesCount = entities.size();
-            int i = 0;
-
-            int entitiesHandled = 0;
-
-            int entityIndex = 0;
-            while (i < entities.getLastIndex() - 1 && entitiesHandled < entities.size() - 1) {
+            int i = 0, entitiesHandled = 0;
+            while (i < entities.getLastIndex() && entitiesHandled < entities.size() - 1) {
                 // get entity index
                 while (entities.getEntityAt(i) == null) i++;
-                entityIndex = i++;
+                final int entityIndex = i++;
 
                 // get opponent index
                 while (entities.getEntityAt(i) == null) i++;
@@ -112,23 +99,13 @@ public class Simulation {
             }
 
             // check last element
-            if (entitiesHandled == entities.size() - 1) {
-                while (entities.getEntityAt(entityIndex) == null) entityIndex++;
-                handleInteraction(entityIndex);
+            if (entitiesHandled != entities.size()) {
+                while (entities.getEntityAt(i) == null) i++;
+                handleInteraction(i);
             }
 
             entities.removeScheduled();
             entities.addScheduled();
-
-            if (printSpentTime) {
-                System.out.println("time spent on reproduction     for day " + currentDay + ": " + reproductionTime);
-                System.out.println("time spent on getting entities for day " + currentDay + ": " + gettingEntitiesTime);
-                System.out.println("time spent on killing entities for day " + currentDay + ": " + killingEntityTime);
-                System.out.println("time spent on danger met check for day " + currentDay + ": " + checkingDangerMetTime);
-                System.out.println("time spent on notify check     for day " + currentDay + ": " + checkingNotifyTime);
-                System.out.println("time spent on total            for day " + currentDay + ": " + (System.nanoTime() - total));
-                System.out.println("time spent on sum              for day " + currentDay + ": " + (reproductionTime + gettingEntitiesTime + killingEntityTime + checkingDangerMetTime + checkingNotifyTime));
-            }
 
             // calculate day complete duration
             final long dayEndTime = System.currentTimeMillis();
@@ -268,7 +245,6 @@ public class Simulation {
         entity.survivalRate = data.egoistSurvivalRate;
         entity.reproductionCountMin = data.egoistReproductionCountMin;
         entity.reproductionCountMax = data.egoistReproductionCountMax;
-        entity.perception = data.egoistPerception;
 
         // update data
         this.egoistCountDailyData[currentDay] = this.egoistCountDailyData[currentDay] + 1;

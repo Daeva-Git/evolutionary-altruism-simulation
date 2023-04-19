@@ -13,7 +13,7 @@ public class Main {
         final SimulationData data = new SimulationData();
 
         final long startTime = System.currentTimeMillis();
-        final int iterations = 10;
+        final int iterations = 100;
 
         final int[][] altruistCountDailyData = new int[iterations][];
         final int[][] egoistCountDailyData = new int[iterations][];
@@ -31,7 +31,7 @@ public class Main {
 
             simulation.setData(data);
             simulation.printSpentTime = false;
-            simulation.printDailyData = true;
+            simulation.printDailyData = false;
             simulation.simulate();
 
             altruistCountDailyData[i] = simulation.altruistCountDailyData.clone();

@@ -6,7 +6,7 @@ public class Test {
     public static void main(String[] args) {
         Utils.random.setSeed(Utils.random.nextInt());
 
-        testOnSeed(476876448);
+        testOnSeed(-1121576342);
     }
 
     public static void testOnSeed (long seed) {
