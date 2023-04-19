@@ -30,9 +30,8 @@ public class EntityArray {
         removedIndices = new ArrayDeque<>();
     }
 
-    public Entity set (int index, Entity entity) {
+    public void set (int index, Entity entity) {
         entities[index] = entity;
-        return entity;
     }
 
     // returns entity at given index
@@ -83,20 +82,29 @@ public class EntityArray {
 
     public void shuffle(Random rnd) {
         int size = size();
-        for (int i = size; i > 1; i--) {
+        for (int i = size - 1; i > 0; i--) {
             // find first
-            while (entities[i - 1] == null) i--;
+            while (entities[i] == null) {
+                i--;
+                // last entity reached, no swaps left
+                if (i == 0) return;
+            }
 
             // find second
             int second = rnd.nextInt(i);
-            while (entities[second] == null) second--;
+            while (entities[second] == null) {
+                second--;
+                // last entity reached, no swaps left
+                if (second == -1) return;
+            }
 
             // swap
-            swap(i - 1, second);
+            swap(i, second);
         }
     }
 
     public void swap (int first, int second) {
+        // shuffle entities to make couples
         final Entity firstEntity = entities[first];
         final Entity secondEntity = entities[second];
 
