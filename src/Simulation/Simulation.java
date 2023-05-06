@@ -223,7 +223,7 @@ public class Simulation {
         // create entity
         final Entity entity = entityPool.obtain();
         entity.isAltruist = true;
-        entity.survivalRate = data.altruistSurvivalRate;
+        entity.survivalChance = data.altruistSurvivalRate;
         entity.reproductionCountMin = data.altruistReproductionCountMin;
         entity.reproductionCountMax = data.altruistReproductionCountMax;
         // keep parent perception if exist
@@ -242,7 +242,7 @@ public class Simulation {
         // create entity
         final Entity entity = entityPool.obtain();
         entity.isAltruist = false;
-        entity.survivalRate = data.egoistSurvivalRate;
+        entity.survivalChance = data.egoistSurvivalRate;
         entity.reproductionCountMin = data.egoistReproductionCountMin;
         entity.reproductionCountMax = data.egoistReproductionCountMax;
 
@@ -290,7 +290,7 @@ public class Simulation {
     }
 
     public boolean survivedDanger (Entity entity) {
-        return Utils.checkChance(entity.survivalRate);
+        return Utils.checkChance(entity.survivalChance);
     }
 
     // entity utils

@@ -2,8 +2,8 @@ package Simulation;
 
 public class SimulationData {
     public float enemyMeetingChance = 0.7f;
-    public int initialAltruistCount = 10;
-    public int initialEgoistCount = 30;
+    public int initialAltruistCount = 20;
+    public int initialEgoistCount = 20;
     public int days = 50;
 
     public boolean usePerception = true;
