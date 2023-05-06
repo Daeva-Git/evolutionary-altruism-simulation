@@ -139,56 +139,49 @@ public class Simulation {
         }
     }
 
-    private void handleInteraction (int firstEntityIndex, int secondEntityIndex) {
-        final Entity firstEntity = entities.getEntityAt(firstEntityIndex);
-        final Entity secondEntity = entities.getEntityAt(secondEntityIndex);
+    private void handleInteraction (int entityIndex, int opponentIndex) {
+        final Entity entity = entities.getEntityAt(entityIndex);
+        final Entity opponent = entities.getEntityAt(opponentIndex);
 
         if (metDanger(data.enemyMeetingChance)) {
             // handle
-            if (shouldNotify(firstEntity, secondEntity)) {
+            if (shouldNotify(entity, opponent)) {
                 // altruistic behavior (first entity yells endangers his life, second one runs)
-                if (data.usePerception) {
-                    if (secondEntity.isAltruist) {
-                        // if opponent is altruist decrease perception
-                        firstEntity.perception -= data.perceptionDecreaseCount;
-                    }
-                }
-
-                // check if first survives
-                final boolean survived = survivedDanger(firstEntity);
-                if (survived) {
+                if (survivedDanger(entity)) {
                     if (data.usePerception) {
                         // if entity survived and the opponent was egoist increase perception
-                        if (!secondEntity.isAltruist) {
-                            // TODO: 11.04.23 note perception can get higher 1
-                            firstEntity.perception += data.perceptionIncreaseCount;
+                        if (!opponent.isAltruist) {
+                            // NOTE: note perception can get higher 1
+                            entity.perception += data.perceptionIncreaseCount;
                         }
                     }
                 } else {
-                    killEntity(firstEntity, firstEntityIndex);
+                    killEntity(entity, entityIndex);
                 }
             } else {
                 // egoist behavior (first entity runs and saves his life, second one dies)
-                killEntity(secondEntity, secondEntityIndex);
+                killEntity(opponent, opponentIndex);
             }
         } else {
             // no danger met -> get food, return to repopulate
-            firstEntity.currentNutrients++;
-            secondEntity.currentNutrients++;
+            entity.currentNutrients++;
+            opponent.currentNutrients++;
 
             // check reproduction
-            handleReproduction(firstEntity);
-            handleReproduction(secondEntity);
+            handleReproduction(entity);
+            handleReproduction(opponent);
 
             if (data.usePerception) {
-                // TODO: 11.04.23 note perception can get lower than 0
-                if (firstEntity.isAltruist) {
-                    // if entity is altruist decrease perception
-                    firstEntity.perception -= data.perceptionDecreaseCount;
+                // if the entity is an altruist decrease perception
+                if (entity.isAltruist) {
+                    // NOTE: note perception can get lower 0
+                    entity.perception -= data.perceptionDecreaseCount;
                 }
-                if (secondEntity.isAltruist) {
-                    // if opponent is altruist decrease perception
-                    secondEntity.perception -= data.perceptionDecreaseCount;
+
+                // if the opponent is an altruist decrease perception
+                if (opponent.isAltruist) {
+                    // NOTE: note perception can get lower 0
+                    opponent.perception -= data.perceptionDecreaseCount;
                 }
             }
         }
