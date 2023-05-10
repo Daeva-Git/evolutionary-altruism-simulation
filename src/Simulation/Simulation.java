@@ -220,10 +220,12 @@ public class Simulation {
         entity.reproductionCountMin = data.altruistReproductionCountMin;
         entity.reproductionCountMax = data.altruistReproductionCountMax;
         // keep parent perception if exist
-        if (data.usePerception && parent != null) {
-            entity.perception = parent.perception;
-        } else {
-            entity.perception = data.altruistPerception;
+        if (data.usePerception) {
+            if (parent == null) {
+                entity.perception = data.altruistPerception;
+            } else {
+                entity.perception = parent.perception;
+            }
         }
 
         // update data
