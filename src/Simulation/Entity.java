@@ -10,4 +10,6 @@ public class Entity {
     public int nutrientsNecessaryForReproduction;
     public int currentNutrients;
     public float perception;
+    public int age;
+    public boolean isAlive = true;
 }

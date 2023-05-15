@@ -9,7 +9,7 @@ import Simulation.utils.Utils;
  * created by Daeva
  */
 public class Simulation {
-    private SimulationData data;
+    private SimulationConfig config;
 
     // world properties
     private EntityArray entities;
@@ -36,28 +36,28 @@ public class Simulation {
         this.entities = new EntityArray();
 
         // initialise data containers
-        this.altruistCountDailyData = new int[data.days + 1];
-        this.egoistCountDailyData = new int[data.days + 1];
-        this.dayCompleteDuration = new float[data.days + 1];
+        this.altruistCountDailyData = new int[config.days + 1];
+        this.egoistCountDailyData = new int[config.days + 1];
+        this.dayCompleteDuration = new float[config.days + 1];
     }
 
-    public void setData (SimulationData data) {
-        this.data = data;
+    public void setConfig(SimulationConfig config) {
+        this.config = config;
 
         reset();
     }
 
     public void simulate () {
-        if (data == null) throw new RuntimeException("No data given");
+        if (config == null) throw new RuntimeException("No data given");
 
-        System.out.println("Starting simulation for " + data.days + " days (Seed " + Utils.getSeed() + ")");
+        System.out.println("Starting simulation for " + config.days + " days (Seed " + Utils.getSeed() + ")");
 
         // initialise entities
-        for (int i = 0; i < data.initialAltruistCount; i++) {
+        for (int i = 0; i < config.initialAltruistCount; i++) {
             summonAltruist(false, null);
         }
 
-        for (int i = 0; i < data.initialEgoistCount; i++) {
+        for (int i = 0; i < config.initialEgoistCount; i++) {
             summonEgoist(false);
         }
 
@@ -69,7 +69,7 @@ public class Simulation {
         // simulate
         final long startTime = System.currentTimeMillis();
 
-        for (int currentDay = 1; currentDay <= data.days; currentDay++) {
+        for (int currentDay = 1; currentDay <= config.days; currentDay++) {
             final long dayStartTime = System.currentTimeMillis();
 
             // update current date
@@ -119,23 +119,28 @@ public class Simulation {
 
             // if no entities left end the simulation
             if (entitiesCount == 0) {
-                endSimulation(startTime, data.days);
+                endSimulation(startTime, config.days);
                 return;
             }
         }
 
-        endSimulation(startTime, data.days);
+        endSimulation(startTime, config.days);
     }
 
     private void handleInteraction (int entityIndex) {
         final Entity entity = entities.getEntityAt(entityIndex);
 
-        if (metDanger(data.enemyMeetingChance)) {
+        if (metDanger(config.enemyMeetingChance)) {
             if (!survivedDanger(entity)) {
                 killEntity(entity, entityIndex);
             }
         } else {
             handleReproduction(entity);
+        }
+
+        if (entity.isAltruist) {
+            // decrease perception as no interaction with another entity
+            entity.perception = Math.max(config.altruistMinPerception, entity.perception - config.perceptionDecreaseCount);
         }
     }
 
@@ -143,23 +148,30 @@ public class Simulation {
         final Entity entity = entities.getEntityAt(entityIndex);
         final Entity opponent = entities.getEntityAt(opponentIndex);
 
-        if (metDanger(data.enemyMeetingChance)) {
-            // handle
+        if (metDanger(config.enemyMeetingChance)) {
             if (shouldNotify(entity, opponent)) {
-                // altruistic behavior (first entity yells endangers his life, second one runs)
+                // altruistic behavior: entity yells endangers his life
                 if (survivedDanger(entity)) {
-                    if (data.usePerception) {
+                    if (config.usePerception) {
                         // if entity survived and the opponent was egoist increase perception
-                        if (!opponent.isAltruist) {
-                            // NOTE: note perception can get higher 1
-                            entity.perception += data.perceptionIncreaseCount;
+                        if (opponent.isAltruist) {
+                            entity.perception = Math.max(config.altruistMinPerception, entity.perception - config.perceptionDecreaseCount);
+                        } else {
+                            entity.perception = Math.min(config.altruistMaxPerception, entity.perception + config.perceptionIncreaseCount);
                         }
                     }
+                    growUp(entity, entityIndex);
                 } else {
                     killEntity(entity, entityIndex);
                 }
+
+                // opponent runs, lives
+                growUp(opponent, opponentIndex);
             } else {
-                // egoist behavior (first entity runs and saves his life, second one dies)
+                // egoist behavior: entity runs and saves his life
+                growUp(entity, entityIndex);
+
+                // opponent dies
                 killEntity(opponent, opponentIndex);
             }
         } else {
@@ -171,19 +183,27 @@ public class Simulation {
             handleReproduction(entity);
             handleReproduction(opponent);
 
-            if (data.usePerception) {
+            if (config.usePerception) {
                 // if the entity is an altruist decrease perception
                 if (entity.isAltruist) {
-                    // NOTE: note perception can get lower 0
-                    entity.perception -= data.perceptionDecreaseCount;
+                    entity.perception = Math.max(config.altruistMinPerception, entity.perception - config.perceptionDecreaseCount);
                 }
 
                 // if the opponent is an altruist decrease perception
                 if (opponent.isAltruist) {
-                    // NOTE: note perception can get lower 0
-                    opponent.perception -= data.perceptionDecreaseCount;
+                    opponent.perception = Math.max(config.altruistMinPerception, opponent.perception - config.perceptionDecreaseCount);
                 }
             }
+
+            growUp(entity, entityIndex);
+            growUp(opponent, opponentIndex);
+        }
+    }
+
+    public void growUp (Entity entity, int entityIndex) {
+        entity.age++;
+        if (checkDyingForAge(entity)) {
+            killEntity(entity, entityIndex);
         }
     }
 
@@ -216,13 +236,15 @@ public class Simulation {
         // create entity
         final Entity entity = entityPool.obtain();
         entity.isAltruist = true;
-        entity.survivalChance = data.altruistSurvivalRate;
-        entity.reproductionCountMin = data.altruistReproductionCountMin;
-        entity.reproductionCountMax = data.altruistReproductionCountMax;
+        entity.survivalChance = config.altruistSurvivalRate;
+        entity.reproductionCountMin = config.altruistReproductionCountMin;
+        entity.reproductionCountMax = config.altruistReproductionCountMax;
+        entity.age = 0;
+        entity.isAlive = true;
         // keep parent perception if exist
-        if (data.usePerception) {
+        if (config.usePerception) {
             if (parent == null) {
-                entity.perception = data.altruistPerception;
+                entity.perception = config.altruistPerception;
             } else {
                 entity.perception = parent.perception;
             }
@@ -237,9 +259,11 @@ public class Simulation {
         // create entity
         final Entity entity = entityPool.obtain();
         entity.isAltruist = false;
-        entity.survivalChance = data.egoistSurvivalRate;
-        entity.reproductionCountMin = data.egoistReproductionCountMin;
-        entity.reproductionCountMax = data.egoistReproductionCountMax;
+        entity.survivalChance = config.egoistSurvivalRate;
+        entity.reproductionCountMin = config.egoistReproductionCountMin;
+        entity.reproductionCountMax = config.egoistReproductionCountMax;
+        entity.age = 0;
+        entity.isAlive = true;
 
         // update data
         this.egoistCountDailyData[currentDay] = this.egoistCountDailyData[currentDay] + 1;
@@ -250,6 +274,7 @@ public class Simulation {
         // remove from entities
         this.entities.remove(entityIndex, true);
         this.entityPool.free(entity);
+        entity.isAlive = false;
 
         // update data
         if (entity.isAltruist) {
@@ -262,7 +287,7 @@ public class Simulation {
     // checking events
     public boolean shouldNotify (Entity entity, Entity opponent) {
         if (entity.isAltruist) {
-            if (data.usePerception) {
+            if (config.usePerception) {
                 // if entity is altruist try to figure out the opponent
                 if (figureOut(entity)) {
                     // if entity could figure out, notify if opponent is altruist, else do not
@@ -288,10 +313,29 @@ public class Simulation {
         return Utils.checkChance(entity.survivalChance);
     }
 
+    public boolean checkDyingForAge (Entity entity) {
+        if (entity.isAltruist) {
+            return entity.age >= config.altruistDeathAge;
+        } else {
+            return entity.age >= config.egoistDeathAge;
+        }
+    }
+
     // entity utils
     public int getReproductionCount (Entity entity) {
         if (entity.nutrientsNecessaryForReproduction > entity.currentNutrients) return 0;
-        return Utils.getRandomNumberInclusive(entity.reproductionCountMin, entity.reproductionCountMax);
+
+        int weightA = 9;
+        int weightB = 1;
+        int totalWeight = weightA + weightB;
+
+        int rand = Utils.getRandomNumberInclusive(1, totalWeight);
+        if (rand <= weightA) {
+            return entity.reproductionCountMin;
+        } else {
+            return entity.reproductionCountMax;
+        }
+//        return Utils.getRandomNumberInclusive(entity.reproductionCountMin, entity.reproductionCountMax);
     }
 
     // simulation utils

@@ -10,7 +10,7 @@ import java.util.Arrays;
 public class Main {
     public static void main (String[] args) throws IOException {
         final Simulation simulation = new Simulation();
-        final SimulationData data = new SimulationData();
+        final SimulationConfig data = new SimulationConfig();
 
         final long startTime = System.currentTimeMillis();
         final int iterations = 100;
@@ -29,7 +29,7 @@ public class Main {
 
             System.out.println("Iteration: " + i);
 
-            simulation.setData(data);
+            simulation.setConfig(data);
             simulation.printSpentTime = false;
             simulation.printDailyData = false;
             simulation.simulate();
