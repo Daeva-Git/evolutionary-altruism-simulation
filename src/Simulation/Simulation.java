@@ -325,8 +325,8 @@ public class Simulation {
     public int getReproductionCount (Entity entity) {
         if (entity.nutrientsNecessaryForReproduction > entity.currentNutrients) return 0;
 
-        int weightA = 9;
-        int weightB = 1;
+        int weightA = config.minReproductionWeight;
+        int weightB = config.maxReproductionWeight;
         int totalWeight = weightA + weightB;
 
         int rand = Utils.getRandomNumberInclusive(1, totalWeight);

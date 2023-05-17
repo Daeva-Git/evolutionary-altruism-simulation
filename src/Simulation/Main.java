@@ -10,13 +10,12 @@ import java.util.Arrays;
 public class Main {
     public static void main (String[] args) throws IOException {
         final Simulation simulation = new Simulation();
-        final SimulationConfig data = new SimulationConfig();
+        final SimulationConfig config = new SimulationConfig();
 
         final long startTime = System.currentTimeMillis();
-        final int iterations = 100;
 
-        final int[][] altruistCountDailyData = new int[iterations][];
-        final int[][] egoistCountDailyData = new int[iterations][];
+        final int[][] altruistCountDailyData = new int[config.iterations][];
+        final int[][] egoistCountDailyData = new int[config.iterations][];
 
         // init file writer
         final File file = new File("data");
@@ -24,12 +23,12 @@ public class Main {
         writer.close(); // clear
 
         // simulate for some iterations
-        for (int i = 0; i < iterations; i++) {
+        for (int i = 0; i < config.iterations; i++) {
             Utils.random.setSeed(Utils.random.nextInt());
 
             System.out.println("Iteration: " + i);
 
-            simulation.setConfig(data);
+            simulation.setConfig(config);
             simulation.printSpentTime = false;
             simulation.printDailyData = false;
             simulation.simulate();
@@ -48,14 +47,14 @@ public class Main {
             iterationWriter.write("\n\n");
             iterationWriter.close();
         }
-        System.out.println("Time taken for " + iterations + " iterations: " + (System.currentTimeMillis() - startTime) / 1000 + "s");
+        System.out.println("Time taken for " + config.iterations + " iterations: " + (System.currentTimeMillis() - startTime) / 1000 + "s");
 
         // write average ratio
         final FileWriter averageWriter = new FileWriter(file, true);
         averageWriter.write("\nAverage Ratio\n");
-        final float[] averageRatio = new float[data.days];
-        for (int day = 0; day < data.days; day++) {
-            for (int i = 0; i < iterations; i++) {
+        final float[] averageRatio = new float[config.days];
+        for (int day = 0; day < config.days; day++) {
+            for (int i = 0; i < config.iterations; i++) {
                 final int altruistsCount = altruistCountDailyData[i][day];
                 final int egoistCount = egoistCountDailyData[i][day];
                 final int entityCount = altruistsCount + egoistCount;
@@ -68,7 +67,7 @@ public class Main {
                 }
                 averageRatio[day] += altruistPercent;
             }
-            averageRatio[day] /= iterations;
+            averageRatio[day] /= config.iterations;
             averageRatio[day] = Utils.floor(averageRatio[day], 3);
         }
         averageWriter.write(Arrays.toString(averageRatio));
