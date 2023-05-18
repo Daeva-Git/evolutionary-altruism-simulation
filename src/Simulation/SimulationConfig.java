@@ -2,15 +2,16 @@ package Simulation;
 
 public class SimulationConfig {
     public final float enemyMeetingChance = 0.7f;
-    public final int initialAltruistCount = 9000;
-    public final int initialEgoistCount = 900;
+    public final int initialAltruistCount = 500;
+    public final int initialEgoistCount = 500;
+    public final boolean usePerception = true;
     public final int days = 100;
     public final int iterations = 1000;
 
+    // reproduction weights
+    public final int minReproductionWeight = 7932;
+    public final int maxReproductionWeight = 2068;
 
-    public final boolean usePerception = true;
-    public final float perceptionIncreaseCount = 0.05f;
-    public final float perceptionDecreaseCount = 0.001f;
 
     // egoists
     public final float egoistSurvivalRate = 0.9f;
@@ -23,12 +24,11 @@ public class SimulationConfig {
     public final int altruistReproductionCountMin = 0;
     public final int altruistReproductionCountMax = 1;
     public final int altruistDeathAge = 100;
-    public final float altruistPerception = 0;//0.1089f;
 
+    // altruist perception
+    public final float altruistPerception = 0.1818f;
     public final float altruistMaxPerception = 0.2045f;
     public final float altruistMinPerception = 0.0f;
-
-    public final int minReproductionWeight = 8596;
-    public final int maxReproductionWeight = 1404;
-
+    public final float perceptionIncreaseCount = 0;//0.05f;
+    public final float perceptionDecreaseCount = 0;//0.001f;
 }
