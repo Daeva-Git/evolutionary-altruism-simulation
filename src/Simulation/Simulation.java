@@ -168,7 +168,7 @@ public class Simulation {
         }
         if (opponent.isAlive) {
             handleReproduction(opponent);
-            growUp(entity, entityIndex);
+            growUp(opponent, entityIndex);
         }
     }
 
