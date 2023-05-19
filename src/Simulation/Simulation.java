@@ -210,7 +210,7 @@ public class Simulation {
     // creating or destroying entities
     public void summonAltruist (boolean schedule, Entity parent) {
         // create entity
-        final Entity entity = entityPool.obtain();
+        final Entity entity = new Entity();// entityPool.obtain();
         entity.isAltruist = true;
         entity.survivalChance = config.altruistSurvivalRate;
         entity.reproductionCountMin = config.altruistReproductionCountMin;
@@ -233,7 +233,7 @@ public class Simulation {
 
     public void summonEgoist (boolean schedule) {
         // create entity
-        final Entity entity = entityPool.obtain();
+        final Entity entity = new Entity();// entityPool.obtain();
         entity.isAltruist = false;
         entity.survivalChance = config.egoistSurvivalRate;
         entity.reproductionCountMin = config.egoistReproductionCountMin;
@@ -311,7 +311,6 @@ public class Simulation {
         } else {
             return entity.reproductionCountMax;
         }
-//        return Utils.getRandomNumberInclusive(entity.reproductionCountMin, entity.reproductionCountMax);
     }
 
     // simulation utils

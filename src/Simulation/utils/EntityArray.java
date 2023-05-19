@@ -16,8 +16,8 @@ public class EntityArray {
     private int currentCapacity;
 
     // scheduling operations
-    final ArrayDeque<Entity> entitiesToAdd = new ArrayDeque<>();
-    final ArrayDeque<Integer> entitiesToRemove = new ArrayDeque<>();
+    public final ArrayDeque<Entity> entitiesToAdd = new ArrayDeque<>();
+    public final ArrayDeque<Integer> entitiesToRemove = new ArrayDeque<>();
 
     public EntityArray() {
         this(DEFAULT_CAPACITY);
