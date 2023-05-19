@@ -104,6 +104,7 @@ public class Simulation {
                 handleInteraction(i);
             }
 
+            entityPool.freeScheduled();
             entities.removeScheduled();
             entities.addScheduled();
 
@@ -132,7 +133,8 @@ public class Simulation {
         }
 
         if (entity.isAlive) {
-            handleReproduction(entity, entityIndex);
+            handleReproduction(entity);
+            growUp(entity, entityIndex);
         }
     }
 
@@ -161,14 +163,16 @@ public class Simulation {
 
         // handle reproduction if alive
         if (entity.isAlive) {
-            handleReproduction(entity, entityIndex);
+            handleReproduction(entity);
+            growUp(entity, entityIndex);
         }
         if (opponent.isAlive) {
-            handleReproduction(opponent, opponentIndex);
+            handleReproduction(opponent);
+            growUp(entity, entityIndex);
         }
     }
 
-    private void handleReproduction (Entity entity, int entityIndex) {
+    private void handleReproduction (Entity entity) {
         entity.currentNutrients++;
 
         // reproduce
@@ -188,8 +192,6 @@ public class Simulation {
                 entity.perception = Math.max(config.altruistMinPerception, entity.perception - config.perceptionDecreaseCount);
             }
         }
-
-        growUp(entity, entityIndex);
     }
 
     public void growUp (Entity entity, int entityIndex) {
@@ -210,13 +212,14 @@ public class Simulation {
     // creating or destroying entities
     public void summonAltruist (boolean schedule, Entity parent) {
         // create entity
-        final Entity entity = new Entity();// entityPool.obtain();
+        final Entity entity = entityPool.obtain();
         entity.isAltruist = true;
         entity.survivalChance = config.altruistSurvivalRate;
         entity.reproductionCountMin = config.altruistReproductionCountMin;
         entity.reproductionCountMax = config.altruistReproductionCountMax;
         entity.age = 0;
         entity.isAlive = true;
+
         // keep parent perception if exist
         if (config.usePerception) {
             if (parent == null) {
@@ -233,13 +236,14 @@ public class Simulation {
 
     public void summonEgoist (boolean schedule) {
         // create entity
-        final Entity entity = new Entity();// entityPool.obtain();
+        final Entity entity = entityPool.obtain();
         entity.isAltruist = false;
         entity.survivalChance = config.egoistSurvivalRate;
         entity.reproductionCountMin = config.egoistReproductionCountMin;
         entity.reproductionCountMax = config.egoistReproductionCountMax;
         entity.age = 0;
         entity.isAlive = true;
+        entity.perception = 0;
 
         // update data
         this.egoistCountDailyData[currentDay] = this.egoistCountDailyData[currentDay] + 1;
@@ -249,7 +253,7 @@ public class Simulation {
     public void killEntity (Entity entity, int entityIndex) {
         // remove from entities
         this.entities.remove(entityIndex, true);
-        this.entityPool.free(entity);
+        this.entityPool.free(entity, true);
         entity.isAlive = false;
 
         // update data
