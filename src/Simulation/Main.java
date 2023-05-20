@@ -29,8 +29,8 @@ public class Main {
             System.out.println("Iteration: " + i);
 
             simulation.setConfig(config);
-            simulation.printSpentTime = false;
-            simulation.printDailyData = false;
+            simulation.printSpentTime = config.printSpentTime;
+            simulation.printDailyData = config.printDailyData;
             simulation.simulate();
 
             altruistCountDailyData[i] = simulation.altruistCountDailyData.clone();
